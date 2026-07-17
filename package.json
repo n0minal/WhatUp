@@ -1,0 +1,15 @@
+{
+  "name": "whatup",
+  "private": true,
+  "description": "Dev orchestration for the WhatUp monorepo — run `npm run dev` to start everything.",
+  "scripts": {
+    "dev": "docker compose up -d --wait && concurrently -k -n backend,twilio,admin -c blue,magenta,green \"npm run dev:backend\" \"npm run dev:twilio\" \"npm run dev:admin\"",
+    "dev:backend": "npm --prefix whatup-backend run start:dev",
+    "dev:twilio": "npm --prefix twilio-mock run dev",
+    "dev:admin": "VITE_API_URL=http://localhost:3000 npm --prefix whatup-admin run dev",
+    "install:all": "npm install && npm --prefix whatup-backend install && npm --prefix twilio-mock install && npm --prefix whatup-admin install"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
+  }
+}
