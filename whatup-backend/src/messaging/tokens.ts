@@ -1,0 +1,1 @@
+export const MESSAGING_CLIENT = Symbol('MESSAGING_CLIENT');
