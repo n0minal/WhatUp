@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: whatup-postgres
+    environment:
+      POSTGRES_USER: whatup
+      POSTGRES_PASSWORD: whatup
+      POSTGRES_DB: whatup
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U whatup -d whatup']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: whatup-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: whatup
+      RABBITMQ_DEFAULT_PASS: whatup
+    ports:
+      - '5672:5672'
+      # management UI: http://localhost:15672 (whatup/whatup)
+      - '15672:15672'
+    volumes:
+      - rabbitmqdata:/var/lib/rabbitmq
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  pgdata:
+  rabbitmqdata:
