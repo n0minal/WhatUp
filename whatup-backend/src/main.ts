@@ -4,6 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { AppMode } from './config/enumerators/app-mode';
+import { OtelLogger } from './observability/otel-logger';
 
 /**
  * One codebase, two run modes (DESIGN.md §1):
@@ -14,14 +15,18 @@ import { AppMode } from './config/enumerators/app-mode';
  */
 async function bootstrap() {
   const mode = (process.env.APP_MODE as AppMode) ?? AppMode.All;
+  // Console output as usual; each line also ships to Loki when OTel is on.
+  const logger = new OtelLogger();
 
   if (mode === AppMode.Worker) {
-    const app = await NestFactory.createApplicationContext(AppModule);
+    const app = await NestFactory.createApplicationContext(AppModule, {
+      logger,
+    });
     app.enableShutdownHooks();
     return;
   }
 
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { logger });
   app.enableCors();
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.enableShutdownHooks();

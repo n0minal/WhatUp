@@ -1,6 +1,8 @@
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
+import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+import { BatchLogRecordProcessor } from '@opentelemetry/sdk-logs';
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 
@@ -23,6 +25,9 @@ if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
       exporter: new OTLPMetricExporter(),
       exportIntervalMillis: 10_000,
     }),
+    logRecordProcessors: [
+      new BatchLogRecordProcessor({ exporter: new OTLPLogExporter() }),
+    ],
     instrumentations: [
       getNodeAutoInstrumentations({
         // fs instrumentation is pure noise for a network service.
