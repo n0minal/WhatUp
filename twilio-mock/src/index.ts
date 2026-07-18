@@ -8,6 +8,10 @@ import express from 'express';
  *   1. The Messages API (outbound): POST /2010-04-01/Accounts/:sid/Messages.json
  *   2. Webhook delivery (inbound):  POST /simulate/inbound  -> POSTs the
  *      Twilio-shaped form payload to the backend's webhook, with chaos knobs.
+ *      This is the ONLY way a message enters the system — the admin UI's
+ *      composer calls it too (the FE plays the phone, this mock plays
+ *      Twilio), so every message flows carrier -> webhook -> queue. CORS is
+ *      open because the composer calls from the browser.
  *
  * Chaos knobs (env) — the reason this exists as a separate process. Real
  * Twilio double-delivers and reorders; these make that reproducible:
@@ -40,6 +44,16 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') {
+    res.status(204).end();
+    return;
+  }
+  next();
+});
 
 // ---------------------------------------------------------------------------
 // Twilio Messages API — what the backend calls to send a reply.
