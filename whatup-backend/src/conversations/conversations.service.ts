@@ -25,14 +25,6 @@ export class ConversationsService {
     }));
   }
 
-  /** Phone number of a conversation — resolved for the send-message path. */
-  async phoneNumberOf(id: string): Promise<string> {
-    const conversation = await this.repository.findById(id);
-    if (!conversation)
-      throw new NotFoundException(`Conversation not found: ${id}`);
-    return conversation.phoneNumber;
-  }
-
   async get(id: string): Promise<ConversationDetail> {
     const conversation = await this.repository.findById(id);
     if (!conversation)
