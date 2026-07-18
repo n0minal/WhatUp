@@ -15,6 +15,12 @@ describe('MessagesService', () => {
     body: 'hello',
   };
 
+  const conversationRow = {
+    id: 'conv-1',
+    phone_number: '+15550001111',
+    created_at: new Date(),
+    last_message_at: new Date(),
+  };
   const conversation = { id: 'conv-1' } as Conversation;
   const inbound = { id: 'msg-1', body: 'hello' } as Message;
 
@@ -29,7 +35,7 @@ describe('MessagesService', () => {
 
   beforeEach(() => {
     repository = {
-      upsertConversation: jest.fn().mockResolvedValue(conversation),
+      upsertConversation: jest.fn().mockResolvedValue(conversationRow),
       insertInboundMessage: jest.fn().mockResolvedValue(inbound),
       claimForProcessing: jest.fn().mockResolvedValue(true),
       getOrCreateOutboundReply: jest
