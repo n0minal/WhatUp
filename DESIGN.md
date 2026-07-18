@@ -220,22 +220,33 @@ TypeORM allows without friction.
 | `GET /conversations` | List conversations, most recent first. |
 | `GET /conversations/:id` | Conversation + all messages, oldest first, with per-message status. |
 | `GET /conversations/events` | SSE change feed: `{ kind: 'change', conversationId }` on every message write. |
-| `POST /conversations` | Send `{ phoneNumber, body }` as a (possibly new) user. Enqueues, returns 202. |
-| `POST /conversations/:id/messages` | Send `{ body }` as the conversation's user. Enqueues, returns 202. |
 
-The send endpoints exist so a user can message the system without a phone
-(admin-UI composer). They enqueue the same payload the webhook does — with an
-app-generated `WU…` sid as the idempotency key — so user-sent messages take
-the identical pipeline: persisted by the worker, processed 3–15 s, replied to
-via Twilio, statuses visible in the read API. 202 = durably queued, not yet
-processed; enqueue-first is preserved (no Postgres write on the send path).
+The admin API is **read-only**: the Twilio webhook is the single ingestion
+door. The admin-UI composer ("send as a user") posts to twilio-mock's
+`POST /simulate/inbound` — the FE plays the phone, the mock plays Twilio —
+which delivers the standard Twilio-shaped webhook to the backend. Every
+message therefore takes the identical path, carrier → webhook → queue →
+worker, chaos knobs included: there is no side door that bypasses the
+carrier, and nothing to keep consistent between two ingestion paths. In
+production the composer would be pointed at a real test phone/Twilio test
+credentials, or dropped — real users text the number.
 
 The read endpoints are the contract consumed by `whatup-admin` (typed in
 `whatup-admin/src/types.ts`); the UI re-fetches on SSE change events instead
 of polling. Because message rows are written by the worker — potentially a
-different process than the API — the feed is driven by a Postgres trigger on
-`messages` plus LISTEN/NOTIFY, so every API instance hears every write
-regardless of topology. No auth, per the brief.
+different process than the API — the feed rides the broker we already run:
+after every visible state transition the pipeline publishes the conversation
+id to a RabbitMQ **fanout exchange** (`whatup-changes`), and each API
+instance consumes from its own exclusive auto-delete queue, so every
+instance hears every write regardless of topology. Hints are re-fetch
+triggers, not data: delivery is deliberately at-most-once (transient
+exchange, no-ack consume, publish failures logged and swallowed) — a lost
+hint costs staleness until the next event, never correctness, and can never
+fail the message pipeline. At production scale the right mechanism is CDC —
+logical replication (e.g. Debezium) feeding a durable log — which catches
+every write path with zero cost inside the write transaction and gives
+consumers replay; the fanout bus is the honest fit for this system's size.
+No auth, per the brief.
 
 **Messaging is behind a technology-agnostic port with swappable drivers, and
 dev-Twilio is a separate application.** `MessagingClient` names the
@@ -263,6 +274,7 @@ demand, so the idempotency defences can be demonstrated rather than claimed.
 | Enqueue-first webhook | Persist-first + queue as doorbell | Keeps Postgres off the ack path; ingestion survives DB outages; no dual-write, no reconciliation sweeper. Cost: seconds of admin-visibility latency. |
 | Nest monolith, two run modes | Lambda workers | One deployment model, shared DI/entities, trivial local dev. Cost: we manage worker concurrency ourselves. |
 | Fixed retry delay + DB claim | Per-message delay tuning | The claim kills double-processing at the source of truth; a single TTL'd retry queue keeps the topology to three queues with no per-job machinery. |
+| RabbitMQ fanout for the SSE change feed | Postgres trigger + LISTEN/NOTIFY; CDC | Reuses the broker already in the stack, keeps events an explicit application concern, and avoids NOTIFY's global commit serialization under load. Cost: only app-driven writes emit hints (a trigger would catch manual SQL too), and delivery is at-most-once — acceptable because hints only trigger re-fetches. For a large-scale production system the choice would be CDC (logical replication → Debezium → durable log): every write path captured, nothing added to the write transaction, replayable consumers. |
 | Standalone twilio-mock service | In-process fake only | A separate process exercises the real HTTP client and the real network boundary, and its chaos knobs make duplicate/reordered webhook delivery reproducible. Cost: one more process in dev — kept trivial (single-file Express app). The in-process fake remains for unit tests. |
 
 ---
