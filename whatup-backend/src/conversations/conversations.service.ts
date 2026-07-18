@@ -5,24 +5,16 @@ import {
   ConversationSummary,
   MessageView,
 } from './types/conversation-views';
+import { ConversationSummaryAdapter } from './adapters/conversation-summary.adapter';
+import { MessageViewAdapter } from './adapters/message-view.adapter';
 
-/**
- * Read side of the admin API. No database access here — that's
- * ConversationsRepository; this layer maps rows to the whatup-admin contract.
- */
 @Injectable()
 export class ConversationsService {
   constructor(private readonly repository: ConversationsRepository) {}
 
   async list(): Promise<ConversationSummary[]> {
     const rows = await this.repository.listWithStats();
-    return rows.map((row) => ({
-      id: row.id,
-      phoneNumber: row.phoneNumber,
-      lastMessagePreview: row.lastMessagePreview ?? '',
-      lastMessageAt: new Date(row.lastMessageAt).toISOString(),
-      messageCount: parseInt(row.messageCount, 10),
-    }));
+    return rows.map((row) => ConversationSummaryAdapter.toModel(row));
   }
 
   async get(id: string): Promise<ConversationDetail> {
@@ -32,14 +24,9 @@ export class ConversationsService {
 
     const messages = await this.repository.messagesOf(id);
     const last = messages[messages.length - 1];
-    const views: MessageView[] = messages.map((m) => ({
-      id: m.id,
-      conversationId: m.conversationId,
-      direction: m.direction,
-      body: m.body,
-      status: m.status,
-      createdAt: m.createdAt.toISOString(),
-    }));
+    const views: MessageView[] = messages.map((m) =>
+      MessageViewAdapter.toModel(m),
+    );
 
     return {
       conversation: {

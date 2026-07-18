@@ -13,6 +13,8 @@ import { CHANGE_EVENT_BUS } from '../queue/tokens';
 import { type ChangeEventBus } from '../queue/types/change-event-bus';
 import { REPLY_GENERATOR } from '../reply/tokens';
 import { type ReplyGenerator } from '../reply/types/reply-generator';
+import { ConversationAdapter } from '../conversations/adapters/conversation.adapter';
+import { ConversationTurnAdapter } from './adapters/conversation-turn.adapter';
 import { MessageStatus } from './enumerators/message-status';
 import { MessagesRepository } from './messages.repository';
 import { InboundSms } from './types/inbound-sms';
@@ -51,7 +53,9 @@ export class MessagesService {
 
   async handleInbound(sms: InboundSms): Promise<void> {
     // 1. Persist — idempotent on twilio_sid; duplicates resolve to the same row.
-    const conversation = await this.repository.upsertConversation(sms.from);
+    const conversation = ConversationAdapter.toModel(
+      await this.repository.upsertConversation(sms.from),
+    );
     const message = await this.repository.insertInboundMessage(
       conversation.id,
       sms.messageSid,
@@ -81,11 +85,12 @@ export class MessagesService {
     try {
       // Conversation context is rebuilt from Postgres per delivery, so a
       // retry or another worker regenerates the identical context.
-      const history = await this.repository.conversationHistory(
+      const rows = await this.repository.conversationHistory(
         conversation.id,
         message.id,
         this.historyLimit,
       );
+      const history = rows.map((row) => ConversationTurnAdapter.toModel(row));
       const replyBody = await this.generateReplyTraced(sms, conversation.id, {
         inboundBody: sms.body,
         history,

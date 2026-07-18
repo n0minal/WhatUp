@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
-import { Conversation } from '../conversations/entities/conversation.entity';
+import { ConversationRow } from '../conversations/types/conversation-row';
 import { Message } from './entities/message.entity';
 import { MessageDirection } from './enumerators/message-direction';
 import { MessageStatus } from './enumerators/message-status';
+import { ConversationTurnRow } from './types/conversation-turn-row';
 
 /**
  * All idempotency guarantees live here, enforced by Postgres constraints
@@ -16,14 +17,13 @@ export class MessagesRepository {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
   /** Find-or-create the conversation for a phone number; bumps last_message_at. */
-  async upsertConversation(phoneNumber: string): Promise<Conversation> {
-    const rows: Conversation[] = await this.dataSource.query(
+  async upsertConversation(phoneNumber: string): Promise<ConversationRow> {
+    const rows: ConversationRow[] = await this.dataSource.query(
       `INSERT INTO conversations (phone_number, last_message_at)
        VALUES ($1, now())
        ON CONFLICT (phone_number)
        DO UPDATE SET last_message_at = now()
-       RETURNING id, phone_number AS "phoneNumber",
-                 created_at AS "createdAt", last_message_at AS "lastMessageAt"`,
+       RETURNING id, phone_number, created_at, last_message_at`,
       [phoneNumber],
     );
     return rows[0];
@@ -152,17 +152,16 @@ export class MessagesRepository {
     conversationId: string,
     excludeMessageId: string,
     limit: number,
-  ): Promise<Pick<Message, 'direction' | 'body'>[]> {
-    const rows: Pick<Message, 'direction' | 'body'>[] =
-      await this.dataSource.query(
-        `SELECT direction, body FROM messages
+  ): Promise<ConversationTurnRow[]> {
+    const rows: ConversationTurnRow[] = await this.dataSource.query(
+      `SELECT direction, body FROM messages
          WHERE conversation_id = $1
            AND id != $2
            AND (in_reply_to IS NULL OR in_reply_to != $2)
          ORDER BY created_at DESC
          LIMIT $3`,
-        [conversationId, excludeMessageId, limit],
-      );
+      [conversationId, excludeMessageId, limit],
+    );
     return rows.reverse();
   }
 
