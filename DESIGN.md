@@ -231,8 +231,11 @@ carrier, and nothing to keep consistent between two ingestion paths. In
 production the composer would be pointed at a real test phone/Twilio test
 credentials, or dropped — real users text the number.
 
-The read endpoints are the contract consumed by `whatup-admin` (typed in
-`whatup-admin/src/types.ts`); the UI re-fetches on SSE change events instead
+The read endpoints are the contract consumed by `whatup-admin`, typed once in
+the **`whatup-contracts`** workspace package — view shapes, enums, and SSE
+event payloads shared by both apps, so contract drift is a compile error on
+whichever side breaks it (entities stay out: the contract is the API surface,
+not the storage model). The UI re-fetches on SSE change events instead
 of polling. Because message rows are written by the worker — potentially a
 different process than the API — the feed rides the broker we already run:
 after every visible state transition the pipeline publishes the conversation
