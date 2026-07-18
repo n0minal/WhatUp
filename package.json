@@ -12,7 +12,7 @@
     "dev": "docker compose up -d --wait && concurrently -k -n backend,twilio,admin -c blue,magenta,green \"npm run dev:backend\" \"npm run dev:twilio\" \"npm run dev:admin\"",
     "obs": "docker compose --profile obs up -d --wait lgtm",
     "obs:down": "docker compose --profile obs rm -sf lgtm",
-    "db:purge": "docker compose exec -T postgres psql -U whatup -d whatup -c 'TRUNCATE messages, conversations' && (for q in whatup-inbound whatup-inbound.retry whatup-inbound.dlq; do docker compose exec -T rabbitmq rabbitmqctl --quiet purge_queue $q 2>/dev/null; done; true)",
+    "db:purge": "docker compose exec -T postgres psql -U whatup -d whatup -c 'TRUNCATE messages, conversations' && (docker compose exec -T redis redis-cli FLUSHALL >/dev/null 2>&1; for q in whatup-inbound whatup-inbound.retry whatup-inbound.dlq; do docker compose exec -T rabbitmq rabbitmqctl --quiet purge_queue $q 2>/dev/null; done; true)",
     "dev:backend": "npm --prefix whatup-backend run start:dev",
     "dev:twilio": "npm --prefix twilio-mock run dev",
     "dev:admin": "VITE_API_URL=http://localhost:3000 VITE_TWILIO_MOCK_URL=http://localhost:4010 npm --prefix whatup-admin run dev",

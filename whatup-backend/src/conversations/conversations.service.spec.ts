@@ -1,14 +1,18 @@
 import { NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { CacheStore } from '../cache/types/cache-store';
 import { ConversationEntity } from './entities/conversation.entity';
 import { MessageEntity } from '../messages/entities/message.entity';
 import { MessageDirection } from '../messages/enumerators/message-direction';
 import { MessageStatus } from '../messages/enumerators/message-status';
+import { conversationKey, CONVERSATIONS_LIST_KEY } from './cache-keys';
 import { ConversationsRepository } from './conversations.repository';
 import { ConversationsService } from './conversations.service';
 import { ConversationListRow } from './types/conversation-views';
 
 describe('ConversationsService', () => {
   let repository: jest.Mocked<ConversationsRepository>;
+  let cache: jest.Mocked<CacheStore>;
   let service: ConversationsService;
 
   const conversation = {
@@ -35,7 +39,15 @@ describe('ConversationsService', () => {
       findById: jest.fn(),
       messagesOf: jest.fn(),
     } as unknown as jest.Mocked<ConversationsRepository>;
-    service = new ConversationsService(repository);
+    cache = {
+      get: jest.fn().mockResolvedValue(null),
+      set: jest.fn().mockResolvedValue(undefined),
+      delete: jest.fn().mockResolvedValue(undefined),
+    };
+    const config = {
+      get: jest.fn().mockReturnValue({ ttlSeconds: 30 }),
+    } as unknown as ConfigService;
+    service = new ConversationsService(repository, cache, config as never);
   });
 
   describe('list', () => {
@@ -63,6 +75,22 @@ describe('ConversationsService', () => {
     it('returns an empty list when there are no conversations', async () => {
       repository.listWithStats.mockResolvedValue([]);
       await expect(service.list()).resolves.toEqual([]);
+    });
+
+    it('serves a cached list without touching the repository', async () => {
+      const summaries = [{ id: 'c1' }];
+      cache.get.mockResolvedValue(summaries);
+
+      await expect(service.list()).resolves.toBe(summaries);
+      expect(repository.listWithStats).not.toHaveBeenCalled();
+    });
+
+    it('populates the cache on a miss with the configured TTL', async () => {
+      repository.listWithStats.mockResolvedValue([]);
+
+      await service.list();
+
+      expect(cache.set).toHaveBeenCalledWith(CONVERSATIONS_LIST_KEY, [], 30);
     });
   });
 
@@ -114,6 +142,36 @@ describe('ConversationsService', () => {
       expect(detail.conversation.lastMessagePreview).toBe('');
       expect(detail.conversation.messageCount).toBe(0);
       expect(detail.messages).toEqual([]);
+    });
+
+    it('serves a cached detail without touching the repository', async () => {
+      const detail = { conversation: { id: conversation.id }, messages: [] };
+      cache.get.mockResolvedValue(detail);
+
+      await expect(service.get(conversation.id)).resolves.toBe(detail);
+      expect(repository.findById).not.toHaveBeenCalled();
+    });
+
+    it('populates the per-conversation cache on a miss', async () => {
+      repository.findById.mockResolvedValue(conversation);
+      repository.messagesOf.mockResolvedValue([]);
+
+      const detail = await service.get(conversation.id);
+
+      expect(cache.set).toHaveBeenCalledWith(
+        conversationKey(conversation.id),
+        detail,
+        30,
+      );
+    });
+
+    it('never caches a not-found result', async () => {
+      repository.findById.mockResolvedValue(null);
+
+      await expect(service.get('missing-id')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(cache.set).not.toHaveBeenCalled();
     });
   });
 });
