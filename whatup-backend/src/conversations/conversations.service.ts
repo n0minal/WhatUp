@@ -19,6 +19,7 @@ export class ConversationsService {
 
   async get(id: string): Promise<ConversationDetail> {
     const conversation = await this.repository.findById(id);
+
     if (!conversation)
       throw new NotFoundException(`Conversation not found: ${id}`);
 

@@ -26,7 +26,7 @@ export class ChangeStreamService implements OnModuleInit {
     private readonly config: ConfigService<AppConfig, true>,
   ) {
     const mode = this.config.get('mode', { infer: true });
-    // SSE is served by the HTTP API only; a pure worker has no subscribers.
+    // SSE is served by the HTTP API only. A pure worker has no subscribers.
     this.enabled = [AppMode.Api, AppMode.All].includes(mode);
   }
 
@@ -37,15 +37,21 @@ export class ChangeStreamService implements OnModuleInit {
     );
   }
 
-  /** One SSE stream per subscriber: change events plus a keepalive ping. */
+  /**
+   * @about Returns an observable stream of server-sent events (SSE) for conversation changes.
+   * The stream emits change events whenever a conversation is modified, and also includes periodic keepalive pings to prevent idle connections from being closed.
+   * @returns  An observable of MessageEvent objects representing conversation change events and keepalive pings.
+   */
   sseEvents(): Observable<MessageEvent> {
     const changes = this.changes$.pipe(
       map((conversationId) => ({ data: { kind: 'change', conversationId } })),
     );
+
     // Keepalive so idle proxies don't reap the connection.
     const pings = interval(25_000).pipe(
       map(() => ({ data: { kind: 'ping' } })),
     );
+
     return merge(changes, pings);
   }
 }

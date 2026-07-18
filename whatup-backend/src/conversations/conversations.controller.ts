@@ -14,15 +14,6 @@ import {
   ConversationSummary,
 } from './types/conversation-views';
 
-/**
- * Admin read API — consumed by whatup-admin, which refetches on SSE change
- * events (GET /conversations/events).
- *
- * Read-only by design: the Twilio webhook is the single ingestion door.
- * Sending as a user (admin-UI composer) goes through twilio-mock's
- * /simulate/inbound, which delivers the standard webhook — so every message
- * enters the system the same way, carrier -> webhook -> queue.
- */
 @Controller('conversations')
 export class ConversationsController {
   constructor(
@@ -35,10 +26,6 @@ export class ConversationsController {
     return this.conversations.list();
   }
 
-  /**
-   * SSE change feed: {kind:'change', conversationId} on every message write,
-   * plus keepalive pings. Declared before :id so the static path wins.
-   */
   @Sse('events')
   events(): Observable<MessageEvent> {
     return this.changeStream.sseEvents();
