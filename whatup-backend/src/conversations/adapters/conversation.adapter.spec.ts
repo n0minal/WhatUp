@@ -1,4 +1,4 @@
-import { Conversation } from '../entities/conversation.entity';
+import { ConversationEntity } from '../entities/conversation.entity';
 import { ConversationRow } from '../types/conversation-row';
 import { ConversationAdapter } from './conversation.adapter';
 
@@ -12,7 +12,7 @@ describe('ConversationAdapter', () => {
 
   it('maps a raw row to a Conversation model', () => {
     const model = ConversationAdapter.toModel(row);
-    expect(model).toBeInstanceOf(Conversation);
+    expect(model).toBeInstanceOf(ConversationEntity);
     expect(model.id).toBe('conv-1');
     expect(model.phoneNumber).toBe('+15550001111');
     expect(model.createdAt).toEqual(new Date('2026-07-01T10:00:00.000Z'));

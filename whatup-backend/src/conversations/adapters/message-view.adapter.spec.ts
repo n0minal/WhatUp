@@ -1,10 +1,10 @@
-import { Message } from '../../messages/entities/message.entity';
+import { MessageEntity } from '../../messages/entities/message.entity';
 import { MessageDirection } from '../../messages/enumerators/message-direction';
 import { MessageStatus } from '../../messages/enumerators/message-status';
 import { MessageViewAdapter } from './message-view.adapter';
 
 describe('MessageViewAdapter', () => {
-  const message = Object.assign(new Message(), {
+  const message = Object.assign(new MessageEntity(), {
     id: 'msg-1',
     conversationId: 'conv-1',
     direction: MessageDirection.Inbound,

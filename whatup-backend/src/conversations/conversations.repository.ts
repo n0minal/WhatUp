@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { Message } from '../messages/entities/message.entity';
-import { Conversation } from './entities/conversation.entity';
+import { MessageEntity } from '../messages/entities/message.entity';
+import { ConversationEntity } from './entities/conversation.entity';
 import { ConversationListRow } from './types/conversation-views';
 
 @Injectable()
@@ -10,10 +10,10 @@ export class ConversationsRepository {
   constructor(
     @InjectDataSource()
     private readonly dataSource: DataSource,
-    @InjectRepository(Conversation)
-    private readonly conversations: Repository<Conversation>,
-    @InjectRepository(Message)
-    private readonly messages: Repository<Message>,
+    @InjectRepository(ConversationEntity)
+    private readonly conversations: Repository<ConversationEntity>,
+    @InjectRepository(MessageEntity)
+    private readonly messages: Repository<MessageEntity>,
   ) {}
 
   /**
@@ -44,7 +44,7 @@ export class ConversationsRepository {
    * @param id The UUID of the conversation to fetch.
    * @returns A promise that resolves to the conversation entity if found, or null if not found.
    */
-  findById(id: string): Promise<Conversation | null> {
+  findById(id: string): Promise<ConversationEntity | null> {
     return this.conversations.findOneBy({ id });
   }
 
@@ -53,7 +53,7 @@ export class ConversationsRepository {
    * @param conversationId The UUID of the conversation for which to fetch messages.
    * @returns A promise that resolves to an array of message entities associated with the specified conversation ID.
    */
-  messagesOf(conversationId: string): Promise<Message[]> {
+  messagesOf(conversationId: string): Promise<MessageEntity[]> {
     return this.messages.find({
       where: { conversationId },
       order: { createdAt: 'ASC' },

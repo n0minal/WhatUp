@@ -1,8 +1,8 @@
 import { MessageView } from 'whatup-contracts';
-import { Message } from '../../messages/entities/message.entity';
+import { MessageEntity } from '../../messages/entities/message.entity';
 
 export class MessageViewAdapter {
-  public static toModel(message: Message): MessageView {
+  public static toModel(message: MessageEntity): MessageView {
     return {
       id: message.id,
       conversationId: message.conversationId,

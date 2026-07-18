@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Conversation } from '../conversations/entities/conversation.entity';
-import { Message } from './entities/message.entity';
+import { ConversationEntity } from '../conversations/entities/conversation.entity';
+import { MessageEntity } from './entities/message.entity';
 import { MessagingModule } from '../messaging/messaging.module';
 import { QueueModule } from '../queue/queue.module';
 import { ReplyModule } from '../reply/reply.module';
@@ -10,7 +10,7 @@ import { MessagesService } from './messages.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Conversation, Message]),
+    TypeOrmModule.forFeature([ConversationEntity, MessageEntity]),
     ReplyModule,
     MessagingModule,
     QueueModule,

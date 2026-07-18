@@ -7,29 +7,35 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Conversation } from '../../conversations/entities/conversation.entity';
+import { ConversationEntity } from '../../conversations/entities/conversation.entity';
 import { MessageDirection } from '../enumerators/message-direction';
 import { MessageStatus } from '../enumerators/message-status';
 
 @Entity('messages')
 @Index(['conversationId', 'createdAt'])
-export class Message {
+export class MessageEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
   @Column({ name: 'conversation_id', type: 'uuid' })
   conversationId!: string;
 
-  @ManyToOne(() => Conversation, (conversation) => conversation.messages, {
-    onDelete: 'CASCADE',
-  })
+  @ManyToOne(
+    () => ConversationEntity,
+    (conversation) => conversation.messages,
+    {
+      onDelete: 'CASCADE',
+    },
+  )
   @JoinColumn({ name: 'conversation_id' })
-  conversation!: Conversation;
+  conversation!: ConversationEntity;
 
   /**
-   * The messaging provider's id for this message (Twilio MessageSid, Zenvia
-   * id, …). Inbound: unique — the idempotency anchor for duplicate
-   * webhook/queue deliveries. Outbound: null until the send is accepted.
+   * The messaging provider's id for this message (e.g. Twilio MessageSid, Zenvia
+   * id, …).
+   * Inbound: unique — the idempotency anchor for duplicate
+   * webhook/queue deliveries.
+   * Outbound: null until the send is accepted.
    */
   @Index({ unique: true, where: 'provider_message_id IS NOT NULL' })
   @Column({ name: 'provider_message_id', type: 'text', nullable: true })

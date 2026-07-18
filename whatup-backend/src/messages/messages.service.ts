@@ -38,15 +38,18 @@ export class MessagesService {
 
   constructor(
     private readonly repository: MessagesRepository,
-    @Inject(REPLY_GENERATOR) private readonly replyGenerator: ReplyGenerator,
-    @Inject(MESSAGING_CLIENT) private readonly messaging: MessagingClient,
-    @Inject(CHANGE_EVENT_BUS) private readonly changes: ChangeEventBus,
-    config: ConfigService<AppConfig, true>,
+    @Inject(REPLY_GENERATOR)
+    private readonly replyGenerator: ReplyGenerator,
+    @Inject(MESSAGING_CLIENT)
+    private readonly messaging: MessagingClient,
+    @Inject(CHANGE_EVENT_BUS)
+    private readonly changes: ChangeEventBus,
+    private readonly config: ConfigService<AppConfig, true>,
   ) {
-    this.staleClaimSeconds = config.get('processing', {
+    this.staleClaimSeconds = this.config.get('processing', {
       infer: true,
     }).staleClaimSeconds;
-    const reply = config.get('reply', { infer: true });
+    const reply = this.config.get('reply', { infer: true });
     this.historyLimit = reply.historyLimit;
     this.replyDriver = reply.driver;
   }
@@ -65,7 +68,7 @@ export class MessagesService {
     // contract: a dropped hint never fails the pipeline.
     await this.changes.publish(conversation.id);
 
-    // 2. Claim — exactly one live worker may pass this point per message.
+    // 2. Claim — exactly one live worker may pass this point per message (atomic).
     const claimed = await this.repository.claimForProcessing(
       message.id,
       this.staleClaimSeconds,
@@ -129,8 +132,6 @@ export class MessagesService {
     }
   }
 
-  /** Reply generation wrapped in a span: driver latency is the pipeline's
-   *  dominant cost, so it gets its own segment in the trace. */
   private async generateReplyTraced(
     sms: InboundSms,
     conversationId: string,

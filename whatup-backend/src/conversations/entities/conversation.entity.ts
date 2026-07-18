@@ -6,10 +6,10 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Message } from '../../messages/entities/message.entity';
+import { MessageEntity } from '../../messages/entities/message.entity';
 
 @Entity('conversations')
-export class Conversation {
+export class ConversationEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -23,6 +23,6 @@ export class Conversation {
   @Column({ name: 'last_message_at', type: 'timestamptz' })
   lastMessageAt!: Date;
 
-  @OneToMany(() => Message, (message) => message.conversation)
-  messages!: Message[];
+  @OneToMany(() => MessageEntity, (message) => message.conversation)
+  messages!: MessageEntity[];
 }

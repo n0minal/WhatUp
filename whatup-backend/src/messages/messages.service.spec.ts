@@ -1,6 +1,6 @@
 import { ConfigService } from '@nestjs/config';
-import { Conversation } from '../conversations/entities/conversation.entity';
-import { Message } from './entities/message.entity';
+import { ConversationEntity } from '../conversations/entities/conversation.entity';
+import { MessageEntity } from './entities/message.entity';
 import { MessageStatus } from './enumerators/message-status';
 import { InboundSms } from './types/inbound-sms';
 import { MessagesRepository } from './messages.repository';
@@ -21,8 +21,8 @@ describe('MessagesService', () => {
     created_at: new Date(),
     last_message_at: new Date(),
   };
-  const conversation = { id: 'conv-1' } as Conversation;
-  const inbound = { id: 'msg-1', body: 'hello' } as Message;
+  const conversation = { id: 'conv-1' } as ConversationEntity;
+  const inbound = { id: 'msg-1', body: 'hello' } as MessageEntity;
 
   let repository: jest.Mocked<MessagesRepository>;
   let replyGenerator: jest.Mocked<ReplyGenerator>;
@@ -30,8 +30,8 @@ describe('MessagesService', () => {
   let changes: { publish: jest.Mock; subscribe: jest.Mock };
   let service: MessagesService;
 
-  const outboundRow = (status: Message['status']): Message =>
-    ({ id: 'out-1', body: 'the reply', status }) as Message;
+  const outboundRow = (status: MessageEntity['status']): MessageEntity =>
+    ({ id: 'out-1', body: 'the reply', status }) as MessageEntity;
 
   beforeEach(() => {
     repository = {
