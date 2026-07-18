@@ -31,6 +31,10 @@ Open **http://localhost:3001** → dashboards → **WhatUp / WhatUp — Overview
 - **Off by default:** without `OTEL_EXPORTER_OTLP_ENDPOINT` the SDK never
   starts and every instrument is a no-op — `npm run dev` without the profile
   runs exactly as before, zero overhead.
+- **Data is persisted:** all telemetry (Prometheus TSDB, Tempo traces, Loki
+  logs) and Grafana state live in the `lgtmdata` volume — `obs:down`,
+  restarts, and recreates lose nothing. Factory reset:
+  `npm run obs:down && docker volume rm whatup_lgtmdata`.
 
 ## What you get
 
@@ -120,19 +124,19 @@ timeseries, then a trace explorer.
   (the metric export interval).
 - **Login screen instead of anonymous access.** Anonymous auth binds to the
   org **by name** (`Main Org.`). Renaming the org in the Grafana UI breaks it
-  and you'll be prompted to sign in. The container is stateless (no volume):
-  `docker compose --profile obs up -d --force-recreate lgtm` resets it to the
-  documented state. If `admin`/`admin` prompts for a new password, choose
-  *Skip* — a changed password is also wiped only by a recreate.
+  and you'll be prompted to sign in. If `admin`/`admin` prompts for a new
+  password, choose *Skip*. Grafana state persists in the `lgtmdata` volume,
+  so mistakes now survive recreates too — the factory reset above is the
+  escape hatch.
 - **No logs in Grafana.** Logs ship only while a backend with
-  `OTEL_EXPORTER_OTLP_ENDPOINT` set is running — and the container is
-  stateless, so a recreate empties Loki until new lines arrive.
+  `OTEL_EXPORTER_OTLP_ENDPOINT` set is running — check that first; history
+  is persisted, so anything already shipped stays queryable.
 
 ## Production notes
 
 - Add alerting rules: `whatup_queue_depth{queue=~".+\\.dlq"} > 0` and a p95
   latency SLO on `whatup_pipeline_duration_seconds`.
 - Replace anonymous access with real auth; pin the `grafana/otel-lgtm` image
-  version; give Tempo/Prometheus persistent volumes and retention policies.
+  version; add retention policies for the persisted TSDB/trace/log data.
 - Head sampling is fine at SMS volumes; introduce tail sampling only if trace
   volume ever becomes a cost concern.

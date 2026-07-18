@@ -51,9 +51,14 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: 'true'
       GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
     volumes:
+      # Everything (Grafana state, Prometheus TSDB, Loki, Tempo) lives under
+      # /data in this image — one volume persists all telemetry across
+      # container recreates. Factory reset: docker volume rm whatup_lgtmdata
+      - lgtmdata:/data
       - ./observability/grafana/dashboards.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/whatup.yaml:ro
       - ./observability/grafana/whatup-overview.json:/otel-lgtm/grafana/dashboards/whatup-overview.json:ro
 
 volumes:
   pgdata:
   rabbitmqdata:
+  lgtmdata:
