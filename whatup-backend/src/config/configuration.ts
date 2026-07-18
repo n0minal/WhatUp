@@ -19,6 +19,7 @@ export default (): AppConfig => ({
   rabbitmq: {
     url: process.env.RABBITMQ_URL ?? 'amqp://whatup:whatup@localhost:5672',
     queue: process.env.RABBITMQ_QUEUE ?? 'whatup-inbound',
+    changesExchange: process.env.RABBITMQ_CHANGES_EXCHANGE ?? 'whatup-changes',
     prefetch: parseInt(process.env.RABBITMQ_PREFETCH ?? '5', 10),
     retryDelayMs: parseInt(process.env.RABBITMQ_RETRY_DELAY_MS ?? '60000', 10),
     maxReceiveCount: parseInt(

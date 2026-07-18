@@ -16,6 +16,8 @@ export interface AppConfig {
     url: string;
     /** Main queue name; `<queue>.retry` and `<queue>.dlq` are derived from it. */
     queue: string;
+    /** Fanout exchange broadcasting change hints to API instances (SSE). */
+    changesExchange: string;
     /** Max unacked deliveries per consumer = worker concurrency. */
     prefetch: number;
     /** Delay before a failed delivery comes back (visibility-timeout analog). */
