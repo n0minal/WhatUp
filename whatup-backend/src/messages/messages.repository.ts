@@ -68,7 +68,8 @@ export class MessagesRepository {
     messageId: string,
     staleClaimSeconds: number,
   ): Promise<boolean> {
-    const result: unknown[] = await this.dataSource.query(
+    // For UPDATE, TypeORM's query() resolves to [rows, affectedCount].
+    const [claimed]: [unknown[], number] = await this.dataSource.query(
       `UPDATE messages
        SET status = $3, claimed_at = now()
        WHERE id = $1
@@ -84,7 +85,8 @@ export class MessagesRepository {
         MessageStatus.Failed,
       ],
     );
-    return result.length > 0;
+
+    return claimed.length > 0;
   }
 
   /**
