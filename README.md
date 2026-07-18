@@ -28,43 +28,39 @@ live, like a helicopter parent with a dashboard.
   below its heading. GitHub replaces it with a hosted user-attachments URL.
 ──────────────────────────────────────────────────────────────────────── -->
 
-### The app
+### The application
 
-<!-- Drop the UI walkthrough video here: composer → 3-15 s "processing" → reply arrives live via SSE. -->
+<!-- Drop the Admin UI walkthrough video here: composer → 3-15 s "processing" → reply arrives live via SSE. -->
 
-*Video coming soon. The child is camera-shy.*
+*Video coming soon.*
 
 ### The observability dashboard
 
 <!-- Drop the Grafana walkthrough video here: the WhatUp Overview dashboard, a trace end-to-end, trace-correlated logs. -->
 
-*Video coming soon. Yes, we film our own dashboard. We watch our messages harder than you watch yours.*
+*Video coming soon.*
 
 ## Features
 
-- **Blue bubbles for everyone.** No green-bubble caste system. Every conversation gets the
-  gradient. This was a custody condition.
-- **It always texts back.** Send an SMS, get a reply in 3-15 seconds. Needy? Yes.
-  Unreliable? Never.
-- **It never loses a message.** Failed processing is retried with a delay, and after three
-  strikes the message is sent to the dead-letter queue, which is like therapy for
-  messages. Nothing is dropped; some things just need time.
-- **Double-texting is safe.** Send the same message twice, or let the carrier deliver it
-  twice: Postgres constraints make sure exactly one reply goes out. WhatUp does not
-  double-text. It has that from neither parent. (Our mock carrier randomly duplicates
-  webhook deliveries *on purpose*, because real carriers do it by accident.)
-- **A helicopter-parent admin UI.** Every conversation, live-updated over SSE. You see the
-  message arrive, you see it *processing…*, you see the reply. Read receipts for the
-  read receipts.
-- **Optional AI replies.** Flip `REPLY_DRIVER=claude` and the replies come from Claude
-  instead of the built-in keyword bot. The child is gifted.
-- **Fully observed.** Traces, metrics, and logs for every message's journey, with a
+- **Guaranteed replies.** Every inbound SMS receives a reply within 3-15 seconds.
+- **No message loss.** Failed processing is retried with a delay; after three attempts
+  the message is parked in a dead-letter queue for inspection. Nothing is dropped.
+- **Duplicate-safe.** Whether a message is sent twice or the carrier delivers it twice,
+  Postgres constraints guarantee exactly one reply per inbound message. The mock carrier
+  deliberately duplicates webhook deliveries to exercise this path.
+- **Live admin UI.** Every conversation updates in real time over Server-Sent Events:
+  message arrival, processing status, and the reply, without polling.
+- **Cached reads.** Admin list and detail responses are served cache-aside from Redis,
+  invalidated by the same change events that drive the live UI.
+- **Optional AI replies.** Set `REPLY_DRIVER=claude` to generate replies with Claude
+  instead of the built-in keyword bot.
+- **Full observability.** Traces, metrics, and logs for every message's journey, with a
   provisioned Grafana dashboard. See [OBSERVABILITY.md](OBSERVABILITY.md).
 
 ## How it works
 
-Every message, including the ones you send from the admin UI, travels through the
-(mock) carrier. Nobody skips the line.
+Every message, including the ones sent from the admin UI, travels through the (mock)
+carrier: there is a single ingestion path.
 
 ```mermaid
 flowchart LR
@@ -84,56 +80,59 @@ everything in Postgres, which is the arbiter of idempotency, ordering, and truth
 The full architecture, trade-offs, and failure walkthroughs live in
 [DESIGN.md](DESIGN.md).
 
-## The stack
-
-Both parents were consulted. Neither approved.
+## Tech stack
 
 | Layer | Tech |
 | --- | --- |
 | Backend | [NestJS](https://nestjs.com) 11 on Node 20+, TypeScript end to end |
 | Database | PostgreSQL 16 with [TypeORM](https://typeorm.io): entities for schema, raw SQL where the guarantees live |
 | Queueing | RabbitMQ 4 via `amqplib`: a durable work queue for the pipeline, a fanout exchange for live updates |
+| Cache | Redis 7 behind a `CacheStore` port; an in-memory driver is available via `CACHE_DRIVER=memory` |
 | Frontend | React 19 + Vite, live-updated over Server-Sent Events (`EventSource`) |
 | Shared types | `whatup-contracts`, an npm-workspaces package both apps import, so the wire contract is a compile error, not a runtime surprise |
-| Carrier | Express (`twilio-mock`), speaking Twilio's webhook and Messages API dialects |
+| Carrier | Express (`twilio-mock`), implementing Twilio's webhook and Messages API surfaces |
 | AI replies | [Claude Agent SDK](https://code.claude.com/docs/en/agent-sdk) (`REPLY_DRIVER=claude`) |
 | Observability | OpenTelemetry SDK (auto-instrumented http/express/pg/amqplib + custom spans and metrics) → [grafana/otel-lgtm](https://github.com/grafana/docker-otel-lgtm): Grafana, Prometheus, Tempo, Loki in one container |
-| Infra | Docker Compose for Postgres, RabbitMQ, and the observability stack |
-| Quality | Jest (87 unit + 26 integration tests), ESLint + Prettier, `class-validator` at the HTTP boundary |
+| Infra | Docker Compose for Postgres, RabbitMQ, Redis, and the observability stack |
+| Quality | Jest (unit + integration suites), ESLint + Prettier, `class-validator` at the HTTP boundary |
 
-## The grown-up concepts
+## Engineering concepts
 
-The jokes stop here for a minute. Under the gradient, WhatUp is a distributed-systems
-exercise, and these are the ideas doing the work, each one detailed in
-[DESIGN.md](DESIGN.md):
+WhatUp is a distributed-systems exercise underneath, and these are the ideas doing the
+work, each one detailed in [DESIGN.md](DESIGN.md):
 
 - **Enqueue-first ingestion.** The webhook validates and enqueues, with no database in
   the path, so it answers in milliseconds, survives a Postgres outage, and beats carrier
   webhook timeouts. If the broker is down it returns 500 and the carrier retries: the
-  failure mode *is* the retry mechanism. (§2)
+  failure mode is the retry mechanism. (§2)
 - **Idempotency, because duplicates are the normal case.** Carriers re-POST, queues
   redeliver, workers crash mid-flight. Three Postgres constraints make all of it safe: a
   unique `provider_message_id` collapses duplicate deliveries onto one row, an atomic
   claim (`UPDATE … WHERE status IN (…)`) lets exactly one worker process it, and a unique
   `in_reply_to` guarantees at most one reply per inbound message. The database is the
-  arbiter; application memory is not invited. (§4)
+  arbiter, not application memory. (§4)
 - **Retries with delay.** A failed delivery is republished to a TTL retry queue whose
   expiry dead-letters it back to the main queue: redelivery-after-delay without a
   scheduler. (§3)
-- **Dead-letter queue.** Three strikes and the message is parked in
+- **Dead-letter queue.** After three failed attempts the message is parked in
   `whatup-inbound.dlq` with its attempt history: never dropped, never poison-looping,
-  waiting for an operator. (§3)
+  available to an operator. (§3)
 - **Stale-claim takeover.** A worker that dies after claiming a message holds the claim
   only for `STALE_CLAIM_SECONDS`; after that any worker may take the row over. Crashed
   workers don't strand messages. (§4)
-- **Ports & adapters.** The pipeline depends on `MessageQueue`, `MessagingClient`,
-  `ReplyGenerator`, and `ChangeEventBus` interfaces; RabbitMQ, Twilio/Zenvia/fake, and
-  Claude/fake are swappable drivers behind DI tokens. Repositories own all SQL; adapters
-  translate rows at every boundary. (§6)
+- **Ports & adapters.** The application depends on `MessageQueue`, `MessagingClient`,
+  `ReplyGenerator`, `ChangeEventBus`, and `CacheStore` interfaces; RabbitMQ,
+  Twilio/Zenvia/fake, Claude/fake, and Redis/memory are swappable drivers behind DI
+  tokens. Repositories own all SQL; adapters translate rows at every boundary. (§6)
 - **Live updates without polling.** Every write publishes a data-free *change hint* to a
   RabbitMQ fanout exchange; every API instance forwards it to its SSE clients, which
   re-fetch. Hints are best-effort by contract: losing one costs staleness, never
   correctness. At production scale this becomes CDC. (§6, §9)
+- **Cache-aside with event-driven invalidation.** The admin read path is cached in
+  Redis; the same change hints that drive the SSE stream evict the affected keys, and a
+  TTL bounds staleness if a hint is missed. Cache operations are best-effort: an
+  unreachable Redis degrades to uncached reads, never to failed requests. Idempotency
+  and claims are never cached. (§6)
 - **Horizontal scaling.** One codebase, `APP_MODE=api|worker|all`, so ingestion and
   processing scale independently; prefetch bounds per-worker concurrency. (§1, §9)
 - **Observability as a feature.** One distributed trace follows a message from webhook
@@ -141,19 +140,20 @@ exercise, and these are the ideas doing the work, each one detailed in
   outbound send; RED-style metrics (throughput by outcome, latency histograms, queue
   depths) and trace-correlated logs land in a provisioned Grafana dashboard.
   ([OBSERVABILITY.md](OBSERVABILITY.md))
-- **Tests that earn their keep.** Unit tests mock the ports; integration tests hit real
-  Postgres to prove the concurrency invariants (8 concurrent claimers, one winner),
-  because mocks return whatever shape you assumed. That suite caught a real bug. (§8)
+- **Tested where the guarantees live.** Unit tests mock the ports; integration tests hit
+  real Postgres to prove the concurrency invariants (concurrent duplicate deliveries
+  converge on one row, exactly one claimer wins), because those guarantees are enforced
+  by the database, not the application. (§8)
 
-## The family tree
+## Repository layout
 
 | Package | What it is |
 | --- | --- |
-| [`whatup-backend`](whatup-backend) | NestJS API + worker. The responsible one. |
-| [`whatup-admin`](whatup-admin) | React admin UI. Got its father's looks. |
-| [`twilio-mock`](twilio-mock) | A tiny Twilio impersonator so you can run the whole carrier loop locally. Legally distinct. |
-| [`whatup-contracts`](whatup-contracts) | Shared TypeScript types, so the frontend and backend never argue about what a message is. |
-| [`observability/`](observability) | Grafana dashboard + datasource provisioning. The family photo album. |
+| [`whatup-backend`](whatup-backend) | NestJS API and worker (one codebase, `APP_MODE` selects the role) |
+| [`whatup-admin`](whatup-admin) | React admin UI |
+| [`twilio-mock`](twilio-mock) | Standalone Twilio impersonator so the full carrier loop runs locally |
+| [`whatup-contracts`](whatup-contracts) | Shared TypeScript types for the API wire contract |
+| [`observability/`](observability) | Grafana dashboard and datasource provisioning |
 
 ## Quickstart
 
@@ -162,21 +162,22 @@ You need **Node 20+** and **Docker**.
 ```bash
 npm install                                    # installs all workspaces, builds the shared contracts
 cp whatup-backend/.env.example whatup-backend/.env
-npm run dev                                    # postgres + rabbitmq (docker) + backend + twilio-mock + admin UI
+npm run dev                                    # postgres + rabbitmq + redis (docker) + backend + twilio-mock + admin UI
 ```
 
 Then open:
 
 | URL | What's there |
 | --- | --- |
-| http://localhost:5173 | Admin UI. Pick a phone number and start texting |
+| http://localhost:5173 | Admin UI |
 | http://localhost:3000 | Backend API (webhook + read-only admin endpoints + SSE) |
 | http://localhost:4010 | twilio-mock |
 | http://localhost:15672 | RabbitMQ management (`whatup` / `whatup`) |
 
 ### Send your first message
 
-Use the composer in the admin UI, where you're playing the phone. Or be the carrier yourself:
+Use the composer in the admin UI, which plays the role of the phone. Or deliver an
+inbound message as the carrier would:
 
 ```bash
 curl -X POST http://localhost:4010/simulate/inbound \
@@ -184,12 +185,12 @@ curl -X POST http://localhost:4010/simulate/inbound \
   -d '{"from": "+15550001111", "body": "hello?"}'
 ```
 
-Watch the conversation appear in the UI, sit in *processing…* for 3-15 seconds, and get
-its reply. The default reply bot understands `BOOK` and `CANCEL` and politely echoes
-everything else. It is not a good conversationalist. That's what the Claude driver is for
-(`REPLY_DRIVER=claude` in `whatup-backend/.env`; see the notes in `.env.example`).
+The conversation appears in the UI, shows *processing…* for 3-15 seconds, and receives
+its reply. The default reply driver responds to the keywords `BOOK` and `CANCEL` and
+echoes anything else; set `REPLY_DRIVER=claude` in `whatup-backend/.env` for LLM-generated
+replies (see the notes in `.env.example`).
 
-### Watch it being watched
+### Observability
 
 ```bash
 npm run obs        # Grafana + Prometheus + Tempo + Loki, one container
@@ -197,7 +198,7 @@ npm run obs        # Grafana + Prometheus + Tempo + Loki, one container
 
 Grafana is at http://localhost:3001, and the **WhatUp Overview** dashboard is the home
 page: throughput, reply latency, queue depths, live traces, and trace-correlated logs.
-Full tour, credentials, and troubleshooting in [OBSERVABILITY.md](OBSERVABILITY.md).
+Setup, credentials, and troubleshooting are in [OBSERVABILITY.md](OBSERVABILITY.md).
 
 ### Tests
 
@@ -212,7 +213,7 @@ npm run test:integration    # repository guarantees against real Postgres, in a 
 | --- | --- |
 | `npm run dev` | Start everything (infra + backend + twilio-mock + admin) |
 | `npm run obs` / `npm run obs:down` | Start / stop the observability stack (Grafana data survives) |
-| `npm run db:purge` | Wipe messages, conversations, and queues. A fresh start, no questions asked |
+| `npm run db:purge` | Wipe messages, conversations, queues, and cache |
 | `npm test` | Unit tests |
 | `npm run test:integration` | Integration tests against real Postgres |
 
@@ -220,9 +221,9 @@ npm run test:integration    # repository guarantees against real Postgres, in a 
 
 <p align="center">
   <sub>
-    WhatUp is a parody and is not affiliated with, endorsed by, or texting either of its
-    parents (Meta's WhatsApp or Apple's iMessage). It was born as a take-home technical
-    assessment; the original brief lives in <a href="ASSESSMENT.md">ASSESSMENT.md</a>,
-    and the engineering it grew into lives in <a href="DESIGN.md">DESIGN.md</a>.
+    WhatUp is a parody project and is not affiliated with WhatsApp (Meta) or iMessage
+    (Apple). It originated as a take-home technical assessment; the original brief is in
+    <a href="ASSESSMENT.md">ASSESSMENT.md</a> and the technical design in
+    <a href="DESIGN.md">DESIGN.md</a>.
   </sub>
 </p>
