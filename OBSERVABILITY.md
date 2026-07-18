@@ -10,15 +10,18 @@ styled with the admin UI's palette.
 
 ```bash
 # 1. Start the observability stack (Grafana + Prometheus + Tempo + Loki, one container)
-docker compose --profile obs up -d
+npm run obs          # npm run obs:down to stop it
 
 # 2. Point the backend at it (whatup-backend/.env)
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 OTEL_SERVICE_NAME=whatup-backend
 
-# 3. Run the apps and send a few messages through the admin UI
+# 3. Run the apps (separately, as usual) and send a few messages
 npm run dev
 ```
+
+`npm run dev` never starts or requires the observability stack — the two run
+independently, in either order.
 
 Open **http://localhost:3001** → dashboards → **WhatUp / WhatUp — Overview**.
 
