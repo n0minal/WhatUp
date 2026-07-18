@@ -1,0 +1,17 @@
+{
+  "name": "whatup-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Wire contract shared by whatup-backend and whatup-admin — API view types, enums, SSE events. No entities, no internals.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}
