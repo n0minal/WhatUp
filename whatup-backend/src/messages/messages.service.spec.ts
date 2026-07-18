@@ -134,4 +134,52 @@ describe('MessagesService', () => {
     await expect(service.handleInbound(sms)).rejects.toThrow('twilio down');
     expect(repository.markFailed).toHaveBeenCalledWith(inbound.id, 'out-1');
   });
+
+  it('publishes a change hint after every visible state transition', async () => {
+    await service.handleInbound(sms);
+
+    // persisted, claimed (processing), reply row recorded, sent.
+    expect(changes.publish).toHaveBeenCalledTimes(4);
+    expect(changes.publish).toHaveBeenCalledWith(conversation.id);
+  });
+
+  it('still hints after a failure so the UI shows the failed status', async () => {
+    messaging.sendSms.mockRejectedValue(new Error('twilio down'));
+
+    await expect(service.handleInbound(sms)).rejects.toThrow();
+
+    // persisted, claimed, reply row recorded, failed.
+    expect(changes.publish).toHaveBeenCalledTimes(4);
+  });
+
+  it('passes the adapted conversation history to the reply generator', async () => {
+    repository.conversationHistory.mockResolvedValue([
+      { direction: 'inbound', body: 'open today?' },
+      { direction: 'outbound', body: 'Yes, until 6.' },
+    ]);
+
+    await service.handleInbound(sms);
+
+    expect(repository.conversationHistory).toHaveBeenCalledWith(
+      conversation.id,
+      inbound.id,
+      20,
+    );
+    expect(replyGenerator.generateReply).toHaveBeenCalledWith({
+      inboundBody: sms.body,
+      history: [
+        { direction: 'inbound', body: 'open today?' },
+        { direction: 'outbound', body: 'Yes, until 6.' },
+      ],
+    });
+  });
+
+  it('does not fail the pipeline when the reply generator throws (records, rethrows for retry)', async () => {
+    replyGenerator.generateReply.mockRejectedValue(new Error('driver crash'));
+
+    await expect(service.handleInbound(sms)).rejects.toThrow('driver crash');
+    // No reply row exists yet, so only the inbound message is marked failed.
+    expect(repository.markFailed).toHaveBeenCalledWith(inbound.id, null);
+    expect(messaging.sendSms).not.toHaveBeenCalled();
+  });
 });
