@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { NavLink } from 'react-router-dom';
-import { startConversation } from '../api/client';
+import { sendSms } from '../api/client';
 import type { Conversation } from '../types';
 import { avatarInitials, formatListTimestamp, formatPhoneNumber } from '../lib/format';
 
@@ -38,7 +38,7 @@ function NewChat({ onStarted }: { onStarted: () => void }) {
     setSending(true);
     setError(null);
     try {
-      await startConversation(phone.trim(), body.trim());
+      await sendSms(phone.trim(), body.trim());
       setPhone('');
       setBody('');
       setOpen(false);

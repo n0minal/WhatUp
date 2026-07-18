@@ -120,18 +120,8 @@ function simulatePipeline(seed: Seed, body: string): void {
   }, 3000);
 }
 
-export async function mockSendMessage(
-  conversationId: string,
-  body: string,
-): Promise<{ messageSid: string }> {
-  await latency();
-  const seed = seeds.find((s) => s.id === conversationId);
-  if (!seed) throw new Error(`Conversation not found: ${conversationId}`);
-  simulatePipeline(seed, body);
-  return { messageSid: `MOCK${Date.now()}` };
-}
-
-export async function mockStartConversation(
+/** Send as a user, keyed by phone number — finds or creates the conversation. */
+export async function mockSendSms(
   phoneNumber: string,
   body: string,
 ): Promise<{ messageSid: string }> {

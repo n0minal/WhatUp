@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { useParams } from 'react-router-dom';
-import { getConversation, sendMessage } from '../api/client';
+import { getConversation, sendSms } from '../api/client';
 import { useLiveQuery } from '../lib/useLiveQuery';
 import type { Message } from '../types';
 import { avatarInitials, formatDayLabel, formatPhoneNumber, formatTime, isSameDay } from '../lib/format';
@@ -18,7 +18,7 @@ function MessageBubble({ message }: { message: Message }) {
   );
 }
 
-function Composer({ conversationId, onSent }: { conversationId: string; onSent: () => void }) {
+function Composer({ phoneNumber, onSent }: { phoneNumber: string; onSent: () => void }) {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +30,7 @@ function Composer({ conversationId, onSent }: { conversationId: string; onSent: 
     setSending(true);
     setError(null);
     try {
-      await sendMessage(conversationId, body);
+      await sendSms(phoneNumber, body);
       setDraft('');
       onSent();
     } catch (err) {
@@ -110,7 +110,7 @@ export function ChatView() {
         </div>
       </div>
 
-      <Composer conversationId={conversation.id} onSent={refresh} />
+      <Composer phoneNumber={conversation.phoneNumber} onSent={refresh} />
     </div>
   );
 }
