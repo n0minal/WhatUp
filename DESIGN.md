@@ -252,6 +252,28 @@ every write path with zero cost inside the write transaction and gives
 consumers replay; the fanout bus is the honest fit for this system's size.
 No auth, per the brief.
 
+**The read path is cached, and the change hints double as the invalidation
+signal.** Every SSE hint makes every connected client re-fetch, so a single
+write fans out into many identical runs of the heaviest queries (the list
+aggregate joins the latest message and a count per conversation).
+`ConversationsService` is cache-aside behind a **`CacheStore` port**
+(`CACHE_DRIVER=redis|memory`, same driver pattern as messaging): list and
+detail responses are cached under `conversations:list` / `conversation:{id}`,
+and a hint subscriber evicts both keys for every change — the first read
+after a hint repopulates, the rest are served from cache. Because hint
+delivery is at-most-once, every entry carries a TTL backstop
+(`CACHE_TTL_SECONDS`, default 30 s) that bounds staleness from a missed
+hint. The memory driver keeps a per-instance Map and still invalidates
+correctly — every API instance receives every hint; the Redis driver (the
+default) adds entries shared across instances and warm across restarts, and
+gives the stack a natural home for adjacent production concerns
+(per-phone-number rate limiting). Cache semantics mirror the hints:
+**best-effort, never load-bearing** — an unreachable Redis degrades every
+operation to a miss or no-op and requests fall through to Postgres. A 404 is
+never cached. And deliberately, **idempotency and claims are never cached**:
+exactly-once state lives in Postgres constraints, where a cache restart
+cannot reopen the duplicate-reply hole.
+
 **Messaging is behind a technology-agnostic port with swappable drivers, and
 dev-Twilio is a separate application.** `MessagingClient` names the
 capability, not the vendor; `MESSAGING_DRIVER=twilio|zenvia|fake` selects
@@ -279,6 +301,7 @@ demand, so the idempotency defences can be demonstrated rather than claimed.
 | Nest monolith, two run modes | Lambda workers | One deployment model, shared DI/entities, trivial local dev. Cost: we manage worker concurrency ourselves. |
 | Fixed retry delay + DB claim | Per-message delay tuning | The claim kills double-processing at the source of truth; a single TTL'd retry queue keeps the topology to three queues with no per-job machinery. |
 | RabbitMQ fanout for the SSE change feed | Postgres trigger + LISTEN/NOTIFY; CDC | Reuses the broker already in the stack, keeps events an explicit application concern, and avoids NOTIFY's global commit serialization under load. Cost: only app-driven writes emit hints (a trigger would catch manual SQL too), and delivery is at-most-once — acceptable because hints only trigger re-fetches. For a large-scale production system the choice would be CDC (logical replication → Debezium → durable log): every write path captured, nothing added to the write transaction, replayable consumers. |
+| Redis cache-aside on admin reads, evicted by change hints | Per-instance in-memory cache; no cache at all | The hint bus already tells every API instance exactly when and what to invalidate, so the hard part of caching comes free; Redis keeps entries shared and warm across instances and restarts, and TTL bounds staleness from at-most-once hint delivery. Cost: one more service to run — mitigated by best-effort semantics (Redis down = uncached reads, not errors) and a `memory` driver behind the same port. Correctness state (idempotency, claims) stays in Postgres either way. |
 | Standalone twilio-mock service | In-process fake only | A separate process exercises the real HTTP client and the real network boundary, and its chaos knobs make duplicate/reordered webhook delivery reproducible. Cost: one more process in dev — kept trivial (single-file Express app). The in-process fake remains for unit tests. |
 
 ---
@@ -300,7 +323,8 @@ demand, so the idempotency defences can be demonstrated rather than claimed.
 ## 9. Production-scale changes
 
 - **Security:** validate Twilio's `X-Twilio-Signature` on the webhook;
-  authenticate the admin API/UI.
+  authenticate the admin API/UI; per-phone-number rate limiting on the
+  webhook, backed by the Redis already in the stack.
 - **Scaling:** workers are stateless queue consumers — scale horizontally on
   queue depth (prefetch caps per-worker concurrency); API scales behind a load
   balancer. Postgres gains read replicas for admin traffic long before writes
