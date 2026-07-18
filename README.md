@@ -22,23 +22,35 @@ live, like a helicopter parent with a dashboard.
 ## Demo
 
 <!-- ────────────────────────────────────────────────────────────────────────
-  RESERVED: demo videos.
-  GitHub renders videos that are uploaded through the web editor. Open this
-  file on github.com, click the pencil, and drag each .mp4/.mov onto the line
-  below its heading. GitHub replaces it with a hosted user-attachments URL.
+  Inline video playback on GitHub requires uploading through the web editor:
+  open this file on github.com, click the pencil, and drag each .mp4 from
+  docs/media/ onto the line below its heading. GitHub replaces it with a
+  hosted user-attachments URL that renders as a player.
 ──────────────────────────────────────────────────────────────────────── -->
 
 ### The application
 
-<!-- Drop the Admin UI walkthrough video here: composer → 3-15 s "processing" → reply arrives live via SSE. -->
+<!-- Drop docs/media/whatup-admin.mp4 here for inline playback. -->
 
-*Video coming soon.*
+A conversation started from the admin composer: the inbound message, the processing
+status while the reply is generated, and the reply arriving live over SSE.
+
+![Admin UI showing a conversation with generated replies](docs/media/admin-conversation.png)
+
+Video: [docs/media/whatup-admin.mp4](docs/media/whatup-admin.mp4)
 
 ### The observability dashboard
 
-<!-- Drop the Grafana walkthrough video here: the WhatUp Overview dashboard, a trace end-to-end, trace-correlated logs. -->
+<!-- Drop docs/media/whatup-grafana.mp4 here for inline playback. -->
 
-*Video coming soon.*
+The provisioned WhatUp Overview dashboard: message throughput and outcomes, reply and
+pipeline latency, queue depths, recent traces, and trace-correlated logs.
+
+![Grafana WhatUp Overview dashboard with live metrics](docs/media/grafana-overview.png)
+
+![Recent traces and trace-correlated logs in Grafana](docs/media/grafana-traces-logs.png)
+
+Video: [docs/media/whatup-grafana.mp4](docs/media/whatup-grafana.mp4)
 
 ## Features
 
