@@ -9,7 +9,7 @@ import { ReplyGenerator } from '../reply/types/reply-generator';
 
 describe('MessagesService', () => {
   const sms: InboundSms = {
-    messageSid: 'SM123',
+    providerMessageId: 'SM123',
     from: '+15550001111',
     to: '+15550000001',
     body: 'hello',
@@ -81,7 +81,7 @@ describe('MessagesService', () => {
     expect(repository.upsertConversation).toHaveBeenCalledWith(sms.from);
     expect(repository.insertInboundMessage).toHaveBeenCalledWith(
       conversation.id,
-      sms.messageSid,
+      sms.providerMessageId,
       sms.body,
     );
     expect(repository.claimForProcessing).toHaveBeenCalledWith(inbound.id, 90);

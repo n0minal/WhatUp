@@ -30,22 +30,22 @@ export class MessagesRepository {
   }
 
   /**
-   * Idempotent insert keyed on twilio_sid. Whether this delivery is the
-   * first or a duplicate (Twilio re-POST or queue redelivery), it resolves to
-   * the same row, which is returned either way.
+   * Idempotent insert keyed on provider_message_id. Whether this delivery is
+   * the first or a duplicate (carrier re-POST or queue redelivery), it
+   * resolves to the same row, which is returned either way.
    */
   async insertInboundMessage(
     conversationId: string,
-    twilioSid: string,
+    providerMessageId: string,
     body: string,
   ): Promise<Message> {
     await this.dataSource.query(
-      `INSERT INTO messages (conversation_id, twilio_sid, direction, body, status)
+      `INSERT INTO messages (conversation_id, provider_message_id, direction, body, status)
        VALUES ($1, $2, $4, $3, $5)
-       ON CONFLICT (twilio_sid) WHERE twilio_sid IS NOT NULL DO NOTHING`,
+       ON CONFLICT (provider_message_id) WHERE provider_message_id IS NOT NULL DO NOTHING`,
       [
         conversationId,
-        twilioSid,
+        providerMessageId,
         body,
         MessageDirection.Inbound,
         MessageStatus.Received,
@@ -53,7 +53,7 @@ export class MessagesRepository {
     );
     return this.dataSource
       .getRepository(Message)
-      .findOneByOrFail({ twilioSid: twilioSid });
+      .findOneByOrFail({ providerMessageId });
   }
 
   /**
@@ -118,12 +118,12 @@ export class MessagesRepository {
   async markSent(
     inboundId: string,
     outboundId: string,
-    twilioSid: string,
+    providerMessageId: string,
   ): Promise<void> {
     await this.dataSource.transaction(async (manager) => {
       await manager.update(Message, outboundId, {
         status: MessageStatus.Sent,
-        twilioSid,
+        providerMessageId,
         processedAt: new Date(),
       });
       await manager.update(Message, inboundId, {

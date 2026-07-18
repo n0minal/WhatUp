@@ -27,13 +27,13 @@ export class Message {
   conversation!: Conversation;
 
   /**
-   * Provider message id (Twilio: MessageSid). Unique: the idempotency anchor
-   * for duplicate webhook/queue deliveries. Null until the send is accepted
-   * for outbound.
+   * The messaging provider's id for this message (Twilio MessageSid, Zenvia
+   * id, …). Inbound: unique — the idempotency anchor for duplicate
+   * webhook/queue deliveries. Outbound: null until the send is accepted.
    */
-  @Index({ unique: true, where: 'twilio_sid IS NOT NULL' })
-  @Column({ name: 'twilio_sid', type: 'text', nullable: true })
-  twilioSid!: string | null;
+  @Index({ unique: true, where: 'provider_message_id IS NOT NULL' })
+  @Column({ name: 'provider_message_id', type: 'text', nullable: true })
+  providerMessageId!: string | null;
 
   @Column({ type: 'text' })
   direction!: MessageDirection;

@@ -17,7 +17,7 @@ export class WebhookController {
   @HttpCode(204)
   async receiveSms(@Body() payload: TwilioInboundDto): Promise<void> {
     await this.queue.send({
-      messageSid: payload.MessageSid,
+      providerMessageId: payload.MessageSid,
       from: payload.From,
       to: payload.To,
       body: payload.Body,

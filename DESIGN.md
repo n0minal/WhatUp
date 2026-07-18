@@ -132,9 +132,10 @@ republish-on-retry). Both are absorbed by the same
 defences, enforced at the source of truth (Postgres), not in application
 memory:
 
-1. **Unique constraint on `messages.twilio_sid`.** The worker inserts with
-   `ON CONFLICT DO NOTHING`. A duplicate delivery — from either source —
-   resolves to the same row.
+1. **Unique constraint on `messages.provider_message_id`** (the carrier's id
+   for the message — Twilio's MessageSid, translated to a neutral name at the
+   webhook seam). The worker inserts with `ON CONFLICT DO NOTHING`. A
+   duplicate delivery — from either source — resolves to the same row.
 2. **Atomic claim before processing.** The worker takes ownership via a
    conditional update:
 
@@ -184,7 +185,7 @@ conversations                          messages
 ─────────────                          ────────
 id            uuid PK                  id              uuid PK
 phone_number  text UNIQUE              conversation_id uuid FK → conversations
-created_at    timestamptz              twilio_sid      text UNIQUE NULL   ← idempotency (inbound)
+created_at    timestamptz              provider_message_id text UNIQUE NULL ← idempotency (inbound)
 last_message_at timestamptz            direction       'inbound' | 'outbound'
                                        body            text
                                        status          'received' | 'processing' | 'sent' | 'failed'

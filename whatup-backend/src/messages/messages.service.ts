@@ -52,13 +52,13 @@ export class MessagesService {
   }
 
   async handleInbound(sms: InboundSms): Promise<void> {
-    // 1. Persist — idempotent on twilio_sid; duplicates resolve to the same row.
+    // 1. Persist — idempotent on provider_message_id; duplicates resolve to the same row.
     const conversation = ConversationAdapter.toModel(
       await this.repository.upsertConversation(sms.from),
     );
     const message = await this.repository.insertInboundMessage(
       conversation.id,
-      sms.messageSid,
+      sms.providerMessageId,
       sms.body,
     );
     // A change hint follows every visible state transition. Best-effort by
@@ -72,7 +72,7 @@ export class MessagesService {
     );
     if (!claimed) {
       this.logger.log(
-        `Duplicate delivery of ${sms.messageSid} dropped (claim failed)`,
+        `Duplicate delivery of ${sms.providerMessageId} dropped (claim failed)`,
       );
       messagesProcessed.add(1, { outcome: 'duplicate' });
       return;
@@ -116,7 +116,7 @@ export class MessagesService {
       await this.changes.publish(conversation.id);
       messagesProcessed.add(1, { outcome: 'sent' });
       pipelineDuration.record((Date.now() - startedAt) / 1000);
-      this.logger.log(`Replied to ${sms.messageSid} (${sid})`);
+      this.logger.log(`Replied to ${sms.providerMessageId} (${sid})`);
     } catch (error) {
       // Record the failure, then rethrow so the queue redelivers (and
       // eventually DLQs). The stale-claim clause lets the retry re-claim this row.
@@ -142,7 +142,7 @@ export class MessagesService {
         attributes: {
           'whatup.reply.driver': this.replyDriver,
           'whatup.conversation.id': conversationId,
-          'whatup.message.sid': sms.messageSid,
+          'whatup.message.provider_id': sms.providerMessageId,
           'whatup.history.turns': context.history.length,
         },
       },
