@@ -598,8 +598,8 @@
     },
     {
       "id": 10,
-      "type": "traces",
-      "title": "Recent traces — webhook → queue → worker → reply",
+      "type": "table",
+      "title": "Recent traces — click a trace ID to open it",
       "datasource": {
         "type": "tempo",
         "uid": "tempo"
@@ -618,10 +618,49 @@
           "limit": 20
         }
       ],
-      "options": {},
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "Start time",
+            "desc": true
+          }
+        ]
+      },
       "fieldConfig": {
-        "defaults": {},
-        "overrides": []
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "filterable": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "traceID"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 300
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Duration"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          }
+        ]
       }
     },
     {
