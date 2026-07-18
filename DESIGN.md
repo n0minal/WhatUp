@@ -309,8 +309,9 @@ demand, so the idempotency defences can be demonstrated rather than claimed.
   context through message headers — the correlation id for free); custom
   metrics cover outcomes, pipeline/reply latency histograms, and live
   queue/retry/DLQ depths, on a provisioned Grafana dashboard styled with
-  the admin UI's palette. Production would add alerting rules (DLQ > 0,
-  p95 latency) and ship logs to Loki alongside.
+  the admin UI's palette; logs ship to Loki with trace ids attached (see
+  OBSERVABILITY.md). Production would add alerting rules (DLQ > 0, p95
+  latency).
 - **Delivery status:** subscribe to Twilio status callbacks to track actual
   SMS delivery (`sent` today means "accepted by Twilio", not "delivered").
 - **Retries:** replace in-job backoff with per-failure-class retry queues

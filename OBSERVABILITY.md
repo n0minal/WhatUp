@@ -1,9 +1,10 @@
 # Observability
 
 WhatUp ships with opt-in OpenTelemetry instrumentation and a self-contained
-Grafana stack. One message produces one distributed trace — webhook → RabbitMQ
-→ worker → Postgres → reply driver → Twilio send — plus metrics for every
-pipeline outcome, on a dashboard styled with the admin UI's palette.
+Grafana stack — all three pillars. One message produces one distributed trace
+— webhook → RabbitMQ → worker → Postgres → reply driver → Twilio send — plus
+metrics for every pipeline outcome and trace-correlated logs, on a dashboard
+styled with the admin UI's palette.
 
 ## Quick start
 
@@ -53,6 +54,16 @@ POST /webhooks/twilio/sms            (API)
 `reply.generate` is the only hand-written span (`messages.service.ts`) —
 everything else is free from auto-instrumentation.
 
+### Logs (Loki)
+
+The app logs through `OtelLogger` (`src/observability/otel-logger.ts`), a
+`ConsoleLogger` subclass that also emits every line over the OTel Logs API —
+console output is unchanged, and with the SDK on, the same lines ship to Loki
+via OTLP. Lines are emitted inside the active context, so a log written
+during a span carries its **trace id**: from a slow trace in Tempo you can
+jump to exactly the log lines it produced, and vice versa. Query with
+`{service_name="whatup-backend"}`, or use the dashboard's live logs panel.
+
 ### Metrics (Prometheus)
 
 Declared in `src/observability/metrics.ts`, recorded by the pipeline and the
@@ -78,6 +89,7 @@ timeseries, then a trace explorer.
   depths, end-to-end pipeline p50/p95.
 - **Traces panel:** recent `whatup-backend` traces straight from Tempo —
   click one to see the span tree above.
+- **Live logs panel:** trace-correlated log lines from Loki, newest first.
 - **Palette:** the admin UI's own tokens (`whatup-admin/src/index.css`) —
   brand blue `#2b6bf3` / cyan `#00c9f5` for volume and latency, and the UI's
   semantic `--ok` `#17a34a`, `--warn` `#d97a06`, `--danger` `#e2483d` for
@@ -109,16 +121,14 @@ timeseries, then a trace explorer.
   `docker compose --profile obs up -d --force-recreate lgtm` resets it to the
   documented state. If `admin`/`admin` prompts for a new password, choose
   *Skip* — a changed password is also wiped only by a recreate.
-- **No logs in Grafana.** Expected: the backend exports traces and metrics;
-  log shipping to Loki is not wired (see production notes). The Loki
-  datasource is empty by design for now.
+- **No logs in Grafana.** Logs ship only while a backend with
+  `OTEL_EXPORTER_OTLP_ENDPOINT` set is running — and the container is
+  stateless, so a recreate empties Loki until new lines arrive.
 
 ## Production notes
 
 - Add alerting rules: `whatup_queue_depth{queue=~".+\\.dlq"} > 0` and a p95
   latency SLO on `whatup_pipeline_duration_seconds`.
-- Ship structured logs to Loki over OTLP so the third pillar joins the same
-  Grafana (the container already accepts them).
 - Replace anonymous access with real auth; pin the `grafana/otel-lgtm` image
   version; give Tempo/Prometheus persistent volumes and retention policies.
 - Head sampling is fine at SMS volumes; introduce tail sampling only if trace
