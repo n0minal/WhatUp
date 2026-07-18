@@ -301,9 +301,16 @@ demand, so the idempotency defences can be demonstrated rather than claimed.
   queue depth (prefetch caps per-worker concurrency); API scales behind a load
   balancer. Postgres gains read replicas for admin traffic long before writes
   are a concern (SMS volume). RabbitMQ itself gains mirrored/quorum queues.
-- **Observability:** structured logs with a correlation id from webhook to
-  reply; metrics on queue depth, message age, processing latency, DLQ size
-  (alarmed); tracing across API → RabbitMQ → worker.
+- **Observability:** implemented — OpenTelemetry behind an opt-in OTLP
+  endpoint (`docker compose --profile obs up` starts a grafana/otel-lgtm
+  container; set `OTEL_EXPORTER_OTLP_ENDPOINT` and open
+  http://localhost:3001). Auto-instrumentation traces one request across
+  API → RabbitMQ → worker → Postgres → LLM → Twilio (amqplib propagates
+  context through message headers — the correlation id for free); custom
+  metrics cover outcomes, pipeline/reply latency histograms, and live
+  queue/retry/DLQ depths, on a provisioned Grafana dashboard styled with
+  the admin UI's palette. Production would add alerting rules (DLQ > 0,
+  p95 latency) and ship logs to Loki alongside.
 - **Delivery status:** subscribe to Twilio status callbacks to track actual
   SMS delivery (`sent` today means "accepted by Twilio", not "delivered").
 - **Retries:** replace in-job backoff with per-failure-class retry queues
