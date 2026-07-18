@@ -1,3 +1,5 @@
+// Must be first: patches http/express/pg/amqplib before they are required.
+import './observability/otel';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
