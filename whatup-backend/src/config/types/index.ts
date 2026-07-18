@@ -1,4 +1,5 @@
 import { AppMode } from '../enumerators/app-mode';
+import { CacheDriver } from '../../cache/enumerators/cache-driver';
 import { MessagingDriver } from '../../messaging/enumerators/messaging-driver';
 import { ReplyDriver } from '../../reply/enumerators/reply-driver';
 
@@ -24,6 +25,14 @@ export interface AppConfig {
     retryDelayMs: number;
     /** Attempts before a message is parked in the DLQ. */
     maxReceiveCount: number;
+  };
+  cache: {
+    /** Which CacheStore driver CacheModule binds. */
+    driver: CacheDriver;
+    /** Redis connection URL (redis driver only). */
+    redisUrl: string;
+    /** Entry lifetime; the backstop for a missed invalidation hint. */
+    ttlSeconds: number;
   };
   messaging: {
     /** Which outbound driver MessagingModule binds. */

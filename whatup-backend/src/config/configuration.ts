@@ -1,3 +1,4 @@
+import { CacheDriver } from '../cache/enumerators/cache-driver';
 import { MessagingDriver } from '../messaging/enumerators/messaging-driver';
 import { ReplyDriver } from '../reply/enumerators/reply-driver';
 import { AppMode } from './enumerators/app-mode';
@@ -26,6 +27,11 @@ export default (): AppConfig => ({
       process.env.RABBITMQ_MAX_RECEIVE_COUNT ?? '3',
       10,
     ),
+  },
+  cache: {
+    driver: (process.env.CACHE_DRIVER as CacheDriver) ?? CacheDriver.Redis,
+    redisUrl: process.env.REDIS_URL ?? 'redis://localhost:6379',
+    ttlSeconds: parseInt(process.env.CACHE_TTL_SECONDS ?? '30', 10),
   },
   messaging: {
     driver:

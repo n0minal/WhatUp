@@ -34,6 +34,20 @@ services:
       timeout: 5s
       retries: 20
 
+  # Cache for the admin read path (cache-aside, invalidated by change hints).
+  # No volume on purpose: cache contents are rebuildable by definition, and
+  # correctness (idempotency, claims) lives in Postgres, never here.
+  redis:
+    image: redis:7-alpine
+    container_name: whatup-redis
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   # Observability, opt-in: docker compose --profile obs up -d
   # Grafana+Prometheus+Tempo+Loki in one container, fed over OTLP. The
   # backend enables OTel when OTEL_EXPORTER_OTLP_ENDPOINT is set.
