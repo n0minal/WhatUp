@@ -1,10 +1,5 @@
 import type { ChangeEvent, SendReceipt } from 'whatup-contracts';
 import type { Conversation, ConversationDetail } from '../types';
-import {
-  mockGetConversation,
-  mockListConversations,
-  mockSendSms,
-} from './mock';
 
 /**
  * Reads come from whatup-backend; sends go through twilio-mock, which plays
@@ -19,15 +14,22 @@ import {
  *   POST {VITE_TWILIO_MOCK_URL}/simulate/inbound    -> 202 SendReceipt
  *        { from, body }
  *
- * When VITE_API_URL is unset the UI runs against in-memory mock data.
+ * Both URLs are required — there is no fake-data fallback; the UI always
+ * shows the real (initially empty) system state.
  */
 const baseUrl: string | undefined = import.meta.env.VITE_API_URL;
 const twilioMockUrl: string | undefined = import.meta.env.VITE_TWILIO_MOCK_URL;
 
 export type { SendReceipt } from 'whatup-contracts';
 
+function requireBaseUrl(): string {
+  if (!baseUrl)
+    throw new Error('VITE_API_URL is not set — start the app with `npm run dev` from the repo root');
+  return baseUrl;
+}
+
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${baseUrl}${path}`);
+  const res = await fetch(`${requireBaseUrl()}${path}`);
   if (!res.ok) throw new Error(`GET ${path} failed: ${res.status} ${res.statusText}`);
   return res.json() as Promise<T>;
 }
@@ -43,13 +45,11 @@ async function post<T>(url: string, payload: unknown): Promise<T> {
 }
 
 export function listConversations(): Promise<Conversation[]> {
-  return baseUrl ? get<Conversation[]>('/conversations') : mockListConversations();
+  return get<Conversation[]>('/conversations');
 }
 
 export function getConversation(id: string): Promise<ConversationDetail> {
-  return baseUrl
-    ? get<ConversationDetail>(`/conversations/${encodeURIComponent(id)}`)
-    : mockGetConversation(id);
+  return get<ConversationDetail>(`/conversations/${encodeURIComponent(id)}`);
 }
 
 /**
@@ -59,7 +59,6 @@ export function getConversation(id: string): Promise<ConversationDetail> {
  * indistinguishable from a real phone texting the service number.
  */
 export function sendSms(phoneNumber: string, body: string): Promise<SendReceipt> {
-  if (!baseUrl) return mockSendSms(phoneNumber, body);
   if (!twilioMockUrl)
     return Promise.reject(
       new Error('VITE_TWILIO_MOCK_URL is not set — the composer sends through twilio-mock'),
@@ -69,16 +68,11 @@ export function sendSms(phoneNumber: string, body: string): Promise<SendReceipt>
 
 /**
  * Subscribe to the backend's SSE change feed. The callback receives the
- * conversationId of each message write ('*' means anything may have changed).
- * Returns an unsubscribe function. EventSource reconnects automatically.
- * Mock mode has no server to push events, so a 5s interval stands in.
+ * conversationId of each message write. Returns an unsubscribe function.
+ * EventSource reconnects automatically.
  */
 export function subscribeToChanges(onChange: (conversationId: string) => void): () => void {
-  if (!baseUrl) {
-    const timer = setInterval(() => onChange('*'), 5000);
-    return () => clearInterval(timer);
-  }
-  const source = new EventSource(`${baseUrl}/conversations/events`);
+  const source = new EventSource(`${requireBaseUrl()}/conversations/events`);
   source.onmessage = (event) => {
     const payload = JSON.parse(event.data as string) as ChangeEvent;
     if (payload.kind === 'change') onChange(payload.conversationId);

@@ -14,7 +14,7 @@ interface LiveQuery<T> {
  * Fetch on mount, then re-fetch whenever the backend's SSE change feed
  * reports a relevant change, keeping stale data on screen while refreshing.
  * `isRelevant` filters by conversationId; omit it to re-fetch on every
- * change. A '*' event (mock mode's stand-in poll) always re-fetches.
+ * change.
  *
  * `fetcher` must be referentially stable (wrap in useCallback) — a new
  * function identity restarts the query and clears current data.
@@ -53,7 +53,7 @@ export function useLiveQuery<T>(
     void run();
     const unsubscribe = subscribeToChanges((conversationId) => {
       const relevant = isRelevantRef.current;
-      if (conversationId === '*' || !relevant || relevant(conversationId)) void run();
+      if (!relevant || relevant(conversationId)) void run();
     });
     return () => {
       cancelled = true;
