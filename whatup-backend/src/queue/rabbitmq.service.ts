@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import * as amqp from 'amqplib';
 import { AppConfig } from '../config/configuration';
+import { queueDepth } from '../observability/metrics';
 import { MessageQueue, QueueHandler } from './types/message-queue';
 
 type AmqpConnection = Awaited<ReturnType<typeof amqp.connect>>;
@@ -40,6 +41,7 @@ export class RabbitMqService
   private running = false;
   private connection: AmqpConnection | null = null;
   private publishChannel: amqp.ConfirmChannel | null = null;
+  private metricsChannel: amqp.Channel | null = null;
   private consuming = false;
   private handler: QueueHandler | null = null;
 
@@ -50,6 +52,24 @@ export class RabbitMqService
     this.prefetch = rabbitmq.prefetch;
     this.retryDelayMs = rabbitmq.retryDelayMs;
     this.maxReceiveCount = rabbitmq.maxReceiveCount;
+
+    // Observed at each metrics export; no-op unless OTel is enabled. A
+    // dedicated channel so a failed check can never break publishing.
+    queueDepth.addCallback(async (result) => {
+      if (!this.metricsChannel) return;
+      for (const name of [
+        this.queue,
+        `${this.queue}.retry`,
+        `${this.queue}.dlq`,
+      ]) {
+        try {
+          const { messageCount } = await this.metricsChannel.checkQueue(name);
+          result.observe(messageCount, { queue: name });
+        } catch {
+          return; // channel died (e.g. queue missing); reconnect re-creates it
+        }
+      }
+    });
   }
 
   onModuleInit(): void {
@@ -101,6 +121,7 @@ export class RabbitMqService
     connection.on('close', () => {
       this.connection = null;
       this.publishChannel = null;
+      this.metricsChannel = null;
       this.consuming = false;
       if (this.running) {
         this.logger.warn('Connection lost, reconnecting');
@@ -121,6 +142,7 @@ export class RabbitMqService
     await channel.assertQueue(`${this.queue}.dlq`, { durable: true });
 
     this.publishChannel = channel;
+    this.metricsChannel = await connection.createChannel();
     this.connection = connection;
     this.logger.log(`Connected; queue '${this.queue}' topology asserted`);
     if (this.handler) await this.startConsumer();
