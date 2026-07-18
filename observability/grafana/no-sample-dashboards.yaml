@@ -1,0 +1,5 @@
+# Mounted over the image's demo-dashboard provider (JVM Overview, RED
+# Metrics): WhatUp is a Node service — the samples are noise. No providers.
+apiVersion: 1
+
+providers: []
