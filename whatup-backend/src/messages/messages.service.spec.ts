@@ -21,6 +21,7 @@ describe('MessagesService', () => {
   let repository: jest.Mocked<MessagesRepository>;
   let replyGenerator: jest.Mocked<ReplyGenerator>;
   let messaging: { sendSms: jest.Mock };
+  let changes: { publish: jest.Mock; subscribe: jest.Mock };
   let service: MessagesService;
 
   const outboundRow = (status: Message['status']): Message =>
@@ -45,6 +46,11 @@ describe('MessagesService', () => {
 
     messaging = { sendSms: jest.fn().mockResolvedValue({ sid: 'SM_out' }) };
 
+    changes = {
+      publish: jest.fn().mockResolvedValue(undefined),
+      subscribe: jest.fn(),
+    };
+
     const config = {
       get: jest.fn().mockReturnValue({
         staleClaimSeconds: 90,
@@ -58,6 +64,7 @@ describe('MessagesService', () => {
       repository,
       replyGenerator,
       messaging,
+      changes,
       config as never,
     );
   });

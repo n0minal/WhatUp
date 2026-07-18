@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { AppConfig } from '../config/configuration';
 import { MESSAGING_CLIENT } from '../messaging/tokens';
 import { type MessagingClient } from '../messaging/types/messaging-client';
+import { CHANGE_EVENT_BUS } from '../queue/tokens';
+import { type ChangeEventBus } from '../queue/types/change-event-bus';
 import { REPLY_GENERATOR } from '../reply/tokens';
 import { type ReplyGenerator } from '../reply/types/reply-generator';
 import { MessageStatus } from './enumerators/message-status';
@@ -28,6 +30,7 @@ export class MessagesService {
     private readonly repository: MessagesRepository,
     @Inject(REPLY_GENERATOR) private readonly replyGenerator: ReplyGenerator,
     @Inject(MESSAGING_CLIENT) private readonly messaging: MessagingClient,
+    @Inject(CHANGE_EVENT_BUS) private readonly changes: ChangeEventBus,
     config: ConfigService<AppConfig, true>,
   ) {
     this.staleClaimSeconds = config.get('processing', {
@@ -44,6 +47,9 @@ export class MessagesService {
       sms.messageSid,
       sms.body,
     );
+    // A change hint follows every visible state transition. Best-effort by
+    // contract: a dropped hint never fails the pipeline.
+    await this.changes.publish(conversation.id);
 
     // 2. Claim — exactly one live worker may pass this point per message.
     const claimed = await this.repository.claimForProcessing(
@@ -56,6 +62,7 @@ export class MessagesService {
       );
       return;
     }
+    await this.changes.publish(conversation.id);
 
     // 3. Process (3–15s), record the reply, send it.
     let outboundId: string | null = null;
@@ -84,9 +91,11 @@ export class MessagesService {
         return;
       }
       outboundId = outbound.id;
+      await this.changes.publish(conversation.id);
 
       const { sid } = await this.messaging.sendSms(sms.from, outbound.body);
       await this.repository.markSent(message.id, outbound.id, sid);
+      await this.changes.publish(conversation.id);
       this.logger.log(`Replied to ${sms.messageSid} (${sid})`);
     } catch (error) {
       // Record the failure, then rethrow so the queue redelivers (and
@@ -94,6 +103,7 @@ export class MessagesService {
       await this.repository
         .markFailed(message.id, outboundId)
         .catch(() => undefined);
+      await this.changes.publish(conversation.id);
       throw error;
     }
   }
