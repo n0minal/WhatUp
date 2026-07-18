@@ -8,13 +8,6 @@ import { CHANGE_EVENT_BUS } from '../queue/tokens';
 import { type ChangeEventBus } from '../queue/types/change-event-bus';
 import { conversationKey, CONVERSATIONS_LIST_KEY } from './cache-keys';
 
-/**
- * Evicts the admin read cache on every change hint — the same signal that
- * tells SSE clients to re-fetch tells the cache its copy is stale, so
- * invalidation needs no extra plumbing. Best-effort like everything on the
- * hint path: a missed hint is bounded by the entry TTL, and a failed delete
- * never fails anything (the CacheStore contract swallows it).
- */
 @Injectable()
 export class CacheInvalidationService implements OnModuleInit {
   private readonly enabled: boolean;

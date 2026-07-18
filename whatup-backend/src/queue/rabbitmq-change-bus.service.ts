@@ -11,17 +11,6 @@ import { ChangeEventBus, ChangeEventHandler } from './types/change-event-bus';
 
 type AmqpConnection = Awaited<ReturnType<typeof amqp.connect>>;
 
-/**
- * RabbitMQ adapter for the ChangeEventBus port: a fanout exchange where the
- * worker publishes conversation ids and each API instance consumes from its
- * own exclusive auto-delete queue — every instance hears every hint,
- * whichever process wrote the row.
- *
- * Deliberately looser than RabbitMqService's work queue: transient exchange,
- * non-persistent publishes, no-ack consume, and a publish failure is logged
- * and swallowed. Hints are re-fetch triggers, not data (DESIGN.md §6) —
- * losing one costs staleness until the next event, never correctness.
- */
 @Injectable()
 export class RabbitMqChangeBusService
   implements ChangeEventBus, OnModuleInit, OnModuleDestroy

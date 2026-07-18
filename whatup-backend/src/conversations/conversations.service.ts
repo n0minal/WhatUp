@@ -13,12 +13,6 @@ import { ConversationSummaryAdapter } from './adapters/conversation-summary.adap
 import { MessageViewAdapter } from './adapters/message-view.adapter';
 import { conversationKey, CONVERSATIONS_LIST_KEY } from './cache-keys';
 
-/**
- * Admin read path, cache-aside (DESIGN.md §6): every SSE hint makes every
- * connected client re-fetch, so one write can fan out into many identical
- * reads. The first read after a hint repopulates the cache; the rest are
- * served from it until the next hint (or the TTL backstop) evicts it.
- */
 @Injectable()
 export class ConversationsService {
   private readonly ttlSeconds: number;

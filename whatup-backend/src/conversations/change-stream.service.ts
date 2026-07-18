@@ -6,15 +6,6 @@ import { AppMode } from '../config/enumerators/app-mode';
 import { CHANGE_EVENT_BUS } from '../queue/tokens';
 import { type ChangeEventBus } from '../queue/types/change-event-bus';
 
-/**
- * Live change feed for the admin UI, served as SSE by ConversationsController.
- *
- * Message rows are written by the worker, which may be a different process
- * than the API (APP_MODE=api|worker), so an in-memory event bus won't do.
- * The pipeline publishes change hints on the ChangeEventBus (a RabbitMQ
- * fanout exchange) after every write — whoever writes, every API instance
- * hears it. This service only shapes those hints into SSE streams.
- */
 @Injectable()
 export class ChangeStreamService implements OnModuleInit {
   private readonly enabled: boolean;

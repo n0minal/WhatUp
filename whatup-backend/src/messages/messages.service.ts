@@ -19,15 +19,6 @@ import { MessageStatus } from './enumerators/message-status';
 import { MessagesRepository } from './messages.repository';
 import { InboundSms } from './types/inbound-sms';
 
-/**
- * The worker-side pipeline (DESIGN.md §2–4). Runs once per queue delivery;
- * safe to run any number of times per message — every step is idempotent or
- * guarded by the claim.
- *
- * Throwing = "redeliver me later" (the queue copy is not acked).
- * Returning = "this delivery is finished" (processed, duplicate, or
- * terminally failed — all recorded in Postgres first).
- */
 @Injectable()
 export class MessagesService {
   private readonly logger = new Logger(MessagesService.name);

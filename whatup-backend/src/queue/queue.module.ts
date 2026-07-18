@@ -10,7 +10,6 @@ import { RabbitMqService } from './rabbitmq.service';
     { provide: MESSAGE_QUEUE, useExisting: RabbitMqService },
     { provide: CHANGE_EVENT_BUS, useExisting: RabbitMqChangeBusService },
   ],
-  // Only the ports are exported: consumers can't couple to the broker classes.
   exports: [MESSAGE_QUEUE, CHANGE_EVENT_BUS],
 })
 export class QueueModule {}

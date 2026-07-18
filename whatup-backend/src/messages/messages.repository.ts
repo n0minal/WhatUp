@@ -7,11 +7,6 @@ import { MessageDirection } from './enumerators/message-direction';
 import { MessageStatus } from './enumerators/message-status';
 import { ConversationTurnRow } from './types/conversation-turn-row';
 
-/**
- * All idempotency guarantees live here, enforced by Postgres constraints
- * (DESIGN.md §4) — they must hold under concurrent workers, so the database
- * is the arbiter, not application memory.
- */
 @Injectable()
 export class MessagesRepository {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}

@@ -12,21 +12,6 @@ import { MessageQueue, QueueHandler } from './types/message-queue';
 
 type AmqpConnection = Awaited<ReturnType<typeof amqp.connect>>;
 
-/**
- * RabbitMQ adapter for the MessageQueue port. Same code path in dev
- * (docker-compose broker)
- * and production — only the URL differs. The topology is asserted on connect,
- * so the broker needs no provisioning script.
- *
- * Delivery semantics the pipeline relies on (DESIGN.md §3):
- *   - a delivery is acked only after the handler returns; a handler that
- *     throws gets the message republished to `<queue>.retry`, whose per-queue
- *     TTL dead-letters it back to the main queue (redelivery-after-delay);
- *   - after `maxReceiveCount` attempts the message is parked in `<queue>.dlq`
- *     instead of retried;
- *   - an unacked message whose worker dies is requeued by the broker
- *     immediately — duplicates are absorbed by DB-enforced idempotency.
- */
 @Injectable()
 export class RabbitMqService
   implements MessageQueue, OnModuleInit, OnModuleDestroy
