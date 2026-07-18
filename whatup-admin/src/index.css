@@ -310,6 +310,8 @@ p {
 }
 
 .chat--empty img {
+  padding: 18px;
+  background: var(--surface);
   border-radius: 28px;
   box-shadow: 0 8px 24px rgb(43 107 243 / 0.25);
 }
