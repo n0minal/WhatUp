@@ -7,7 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { AppConfig } from '../config/configuration';
 import { AppMode } from '../config/enumerators/app-mode';
-import { parseInboundSms } from '../messages/inbound-sms';
+import { InboundSmsAdapter } from '../messages/adapters/inbound-sms.adapter';
 import { MessagesService } from '../messages/messages.service';
 import { MESSAGE_QUEUE } from '../queue/tokens';
 import { type MessageQueue } from '../queue/types/message-queue';
@@ -39,7 +39,7 @@ export class QueueConsumerService implements OnApplicationBootstrap {
     // Deliveries process concurrently up to the channel prefetch; idempotency
     // is DB-enforced, so concurrency needs no coordination here.
     await this.queue.consume(async (body) => {
-      const sms = parseInboundSms(body);
+      const sms = InboundSmsAdapter.toModel(body);
       await this.messages.handleInbound(sms);
     });
     this.logger.log('Queue consumer registered');
