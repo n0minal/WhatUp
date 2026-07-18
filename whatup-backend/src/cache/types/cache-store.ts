@@ -1,5 +1,5 @@
 /**
- * Port for the read cache (DESIGN.md §6 pattern, same as MessagingClient).
+ * Port for the read cache (same pattern as MessagingClient).
  * The DI container binds a driver (Redis or in-memory) selected by
  * CACHE_DRIVER; call sites never know which.
  *

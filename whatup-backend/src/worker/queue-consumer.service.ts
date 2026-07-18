@@ -13,8 +13,8 @@ import { MESSAGE_QUEUE } from '../queue/tokens';
 import { type MessageQueue } from '../queue/types/message-queue';
 
 /**
- * Registers the pipeline as the queue consumer. Deletion discipline
- * (DESIGN.md §3): a delivery is acked only after MessagesService returns —
+ * Registers the pipeline as the queue consumer. Deletion discipline:
+ * a delivery is acked only after MessagesService returns —
  * i.e. after the outcome is durably in Postgres. Throwing hands the message
  * back to the queue adapter, which schedules a delayed redelivery and parks
  * it in the DLQ after maxReceiveCount attempts.

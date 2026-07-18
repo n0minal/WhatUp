@@ -55,7 +55,7 @@ live, like a helicopter parent with a dashboard.
 - **Optional AI replies.** Set `REPLY_DRIVER=claude` to generate replies with Claude
   instead of the built-in keyword bot.
 - **Full observability.** Traces, metrics, and logs for every message's journey, with a
-  provisioned Grafana dashboard. See [OBSERVABILITY.md](OBSERVABILITY.md).
+  provisioned Grafana dashboard. See [OBSERVABILITY.md](docs/OBSERVABILITY.md).
 
 ## How it works
 
@@ -84,7 +84,7 @@ everything in Postgres, which is the arbiter of idempotency, ordering, and truth
 Admin reads are served cache-aside from Redis, falling through to Postgres on a
 miss; the change hints that drive the SSE stream also evict the affected cache
 keys. The full architecture, trade-offs, and failure walkthroughs live in
-[DESIGN.md](DESIGN.md).
+[DESIGN.md](docs/DESIGN.md).
 
 ## Tech stack
 
@@ -105,7 +105,7 @@ keys. The full architecture, trade-offs, and failure walkthroughs live in
 ## Engineering concepts
 
 WhatUp is a distributed-systems exercise underneath, and these are the ideas doing the
-work, each one detailed in [DESIGN.md](DESIGN.md):
+work, each one detailed in [DESIGN.md](docs/DESIGN.md):
 
 - **Enqueue-first ingestion.** The webhook validates and enqueues, with no database in
   the path, so it answers in milliseconds, survives a Postgres outage, and beats carrier
@@ -145,7 +145,7 @@ work, each one detailed in [DESIGN.md](DESIGN.md):
   through the queue (context propagated in message headers) to reply generation and the
   outbound send; RED-style metrics (throughput by outcome, latency histograms, queue
   depths) and trace-correlated logs land in a provisioned Grafana dashboard.
-  ([OBSERVABILITY.md](OBSERVABILITY.md))
+  ([OBSERVABILITY.md](docs/OBSERVABILITY.md))
 - **Tested where the guarantees live.** Unit tests mock the ports; integration tests hit
   real Postgres to prove the concurrency invariants (concurrent duplicate deliveries
   converge on one row, exactly one claimer wins), because those guarantees are enforced
@@ -204,7 +204,7 @@ npm run obs        # Grafana + Prometheus + Tempo + Loki, one container
 
 Grafana is at http://localhost:3001, and the **WhatUp Overview** dashboard is the home
 page: throughput, reply latency, queue depths, live traces, and trace-correlated logs.
-Setup, credentials, and troubleshooting are in [OBSERVABILITY.md](OBSERVABILITY.md).
+Setup, credentials, and troubleshooting are in [OBSERVABILITY.md](docs/OBSERVABILITY.md).
 
 ### Tests
 
@@ -229,7 +229,7 @@ npm run test:integration    # repository guarantees against real Postgres, in a 
   <sub>
     WhatUp is a parody project and is not affiliated with WhatsApp (Meta) or iMessage
     (Apple). It originated as a take-home technical assessment; the original brief is in
-    <a href="ASSESSMENT.md">ASSESSMENT.md</a> and the technical design in
-    <a href="DESIGN.md">DESIGN.md</a>.
+    <a href="docs/ASSESSMENT.md">ASSESSMENT.md</a> and the technical design in
+    <a href="docs/DESIGN.md">DESIGN.md</a>.
   </sub>
 </p>

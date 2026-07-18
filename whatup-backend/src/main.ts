@@ -7,7 +7,7 @@ import { AppMode } from './config/enumerators/app-mode';
 import { OtelLogger } from './observability/otel-logger';
 
 /**
- * One codebase, two run modes (DESIGN.md §1):
+ * One codebase, two run modes:
  *   APP_MODE=api    -> HTTP server only (webhook + admin REST)
  *   APP_MODE=worker -> RabbitMQ consumer only, no HTTP listener
  *   APP_MODE=all    -> both in one process (local dev default)

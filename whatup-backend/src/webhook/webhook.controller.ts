@@ -4,7 +4,7 @@ import { type MessageQueue } from '../queue/types/message-queue';
 import { TwilioInboundDto } from './dto/twilio-inbound.dto';
 
 /**
- * The 5-second path (DESIGN.md §2). Exactly two things happen here: validate
+ * The 5-second path. Exactly two things happen here: validate
  * the payload shape, enqueue it. No database — ingestion must survive a
  * Postgres outage, and the 204 must return in milliseconds. If the enqueue
  * throws, Nest returns 500 and Twilio retries: correct behaviour, no cleanup.
