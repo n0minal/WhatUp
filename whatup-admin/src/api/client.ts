@@ -1,3 +1,4 @@
+import type { ChangeEvent, SendReceipt } from 'whatup-contracts';
 import type { Conversation, ConversationDetail } from '../types';
 import {
   mockGetConversation,
@@ -23,9 +24,7 @@ import {
 const baseUrl: string | undefined = import.meta.env.VITE_API_URL;
 const twilioMockUrl: string | undefined = import.meta.env.VITE_TWILIO_MOCK_URL;
 
-export interface SendReceipt {
-  messageSid: string;
-}
+export type { SendReceipt } from 'whatup-contracts';
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${baseUrl}${path}`);
@@ -81,11 +80,8 @@ export function subscribeToChanges(onChange: (conversationId: string) => void): 
   }
   const source = new EventSource(`${baseUrl}/conversations/events`);
   source.onmessage = (event) => {
-    const payload = JSON.parse(event.data as string) as {
-      kind: string;
-      conversationId?: string;
-    };
-    if (payload.kind === 'change' && payload.conversationId) onChange(payload.conversationId);
+    const payload = JSON.parse(event.data as string) as ChangeEvent;
+    if (payload.kind === 'change') onChange(payload.conversationId);
   };
   return () => source.close();
 }

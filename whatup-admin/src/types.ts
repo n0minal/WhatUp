@@ -1,26 +1,12 @@
-export type MessageDirection = 'inbound' | 'outbound';
-
-export type MessageStatus = 'received' | 'processing' | 'sent' | 'failed';
-
-export interface Conversation {
-  id: string;
-  /** E.164 phone number of the remote party. */
-  phoneNumber: string;
-  lastMessagePreview: string;
-  lastMessageAt: string;
-  messageCount: number;
-}
-
-export interface Message {
-  id: string;
-  conversationId: string;
-  direction: MessageDirection;
-  body: string;
-  status: MessageStatus;
-  createdAt: string;
-}
-
-export interface ConversationDetail {
-  conversation: Conversation;
-  messages: Message[];
-}
+/**
+ * Wire types come from the shared contract (whatup-contracts) — the same
+ * definitions the backend's controllers return, so drift is a compile error.
+ * Local aliases keep the UI's vocabulary (Conversation, Message).
+ */
+export type {
+  ConversationSummary as Conversation,
+  MessageView as Message,
+  ConversationDetail,
+  MessageDirectionValue as MessageDirection,
+  MessageStatusValue as MessageStatus,
+} from 'whatup-contracts';
