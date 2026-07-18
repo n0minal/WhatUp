@@ -45,8 +45,8 @@ export class RabbitMqService
   private consuming = false;
   private handler: QueueHandler | null = null;
 
-  constructor(config: ConfigService<AppConfig, true>) {
-    const rabbitmq = config.get('rabbitmq', { infer: true });
+  constructor(private readonly config: ConfigService<AppConfig, true>) {
+    const rabbitmq = this.config.get('rabbitmq', { infer: true });
     this.url = rabbitmq.url;
     this.queue = rabbitmq.queue;
     this.prefetch = rabbitmq.prefetch;
@@ -85,6 +85,14 @@ export class RabbitMqService
     await this.connection?.close().catch(() => undefined);
   }
 
+  /**
+   * @about Publishes a payload to the main queue as persistent JSON. Resolves
+   * only once the broker confirms the write (confirm channel).
+   * @param payload - The message body; serialized to JSON on the wire.
+   * @returns Promise<void>
+   * @throws Error when the broker connection is not (yet) available — the
+   * webhook turns this into a 500 so the carrier retries.
+   */
   async send(payload: object): Promise<void> {
     if (!this.publishChannel)
       throw new Error('RabbitMQ connection not available');
@@ -96,6 +104,14 @@ export class RabbitMqService
     );
   }
 
+  /**
+   * @about Registers the handler for queue deliveries. A delivery is acked
+   * only after the handler resolves; a rejection schedules a delayed
+   * redelivery, then parks the message in the DLQ after maxReceiveCount
+   * attempts. The consumer attaches now or as soon as the connection lands.
+   * @param handler - The pipeline entry point, called once per delivery.
+   * @returns Promise<void>
+   */
   async consume(handler: QueueHandler): Promise<void> {
     this.handler = handler;
     if (this.connection) await this.startConsumer();

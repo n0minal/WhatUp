@@ -33,10 +33,19 @@ export class ClaudeReplyDriver implements ReplyGenerator {
   private readonly logger = new Logger(ClaudeReplyDriver.name);
   private readonly model: string;
 
-  constructor(config: ConfigService<AppConfig, true>) {
-    this.model = config.get('reply', { infer: true }).claude.model;
+  constructor(private readonly config: ConfigService<AppConfig, true>) {
+    this.model = this.config.get('reply', { infer: true }).claude.model;
   }
 
+  /**
+   * @about Generates the reply text for an inbound message, rendering the
+   * conversation history into a single stateless prompt. Aborts after 60 s so
+   * a hung query fails well inside the 90 s stale-claim window.
+   * @param context - The inbound body plus prior turns rebuilt from Postgres.
+   * @returns The generated reply, trimmed.
+   * @throws Error on an empty reply, a failed query, or the 60 s timeout —
+   * all follow the pipeline's failure path (mark failed, redeliver, DLQ).
+   */
   async generateReply(context: ReplyContext): Promise<string> {
     // Abort well under STALE_CLAIM_SECONDS (90 s): a hung query must fail and
     // release the claim before another worker can take the row over.

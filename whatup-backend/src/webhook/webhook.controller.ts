@@ -11,8 +11,17 @@ import { TwilioInboundDto } from './dto/twilio-inbound.dto';
  */
 @Controller('webhooks/twilio')
 export class WebhookController {
-  constructor(@Inject(MESSAGE_QUEUE) private readonly queue: MessageQueue) {}
+  constructor(
+    @Inject(MESSAGE_QUEUE)
+    private readonly queue: MessageQueue,
+  ) {}
 
+  /**
+   * @about Accepts a Twilio inbound-SMS webhook and enqueues it for the
+   * worker, translating Twilio's field names to the neutral queue payload.
+   * @param payload - The validated Twilio webhook body (PascalCase keys).
+   * @returns Promise<void> — 204 once the broker has durably accepted the message.
+   */
   @Post('sms')
   @HttpCode(204)
   async receiveSms(@Body() payload: TwilioInboundDto): Promise<void> {

@@ -12,13 +12,18 @@ export class FakeReplyDriver implements ReplyGenerator {
   private readonly minMs: number;
   private readonly maxMs: number;
 
-  constructor(config: ConfigService<AppConfig, true>) {
-    const processing = config.get('processing', { infer: true });
+  constructor(private readonly config: ConfigService<AppConfig, true>) {
+    const processing = this.config.get('processing', { infer: true });
     this.minMs = processing.minMs;
     this.maxMs = processing.maxMs;
   }
 
-  // Deterministic keyword replies — conversation history is ignored here.
+  /**
+   * @about Generates a deterministic keyword reply (BOOK/CANCEL/echo) after
+   * the simulated processing delay. Conversation history is ignored here.
+   * @param context - The inbound body; prior turns are not used.
+   * @returns The canned reply text.
+   */
   async generateReply({ inboundBody }: ReplyContext): Promise<string> {
     const delay = this.minMs + Math.random() * (this.maxMs - this.minMs);
     await new Promise((resolve) => setTimeout(resolve, delay));

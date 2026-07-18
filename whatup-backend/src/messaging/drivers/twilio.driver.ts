@@ -15,14 +15,22 @@ export class TwilioDriver implements MessagingClient {
   private readonly authToken: string;
   private readonly fromNumber: string;
 
-  constructor(config: ConfigService<AppConfig, true>) {
-    const twilio = config.get('twilio', { infer: true });
+  constructor(private readonly config: ConfigService<AppConfig, true>) {
+    const twilio = this.config.get('twilio', { infer: true });
     this.apiBaseUrl = twilio.apiBaseUrl;
     this.accountSid = twilio.accountSid;
     this.authToken = twilio.authToken;
     this.fromNumber = twilio.fromNumber;
   }
 
+  /**
+   * @about Sends an SMS through Twilio's Messages API with basic auth and a
+   * form-encoded body.
+   * @param to - The recipient phone number (E.164).
+   * @param body - The text of the message.
+   * @returns The provider message id (Twilio MessageSid) of the accepted send.
+   * @throws Error with the HTTP status and response text when Twilio rejects the send.
+   */
   async sendSms(to: string, body: string): Promise<SendSmsResult> {
     const url = `${this.apiBaseUrl}/2010-04-01/Accounts/${this.accountSid}/Messages.json`;
     const auth = Buffer.from(`${this.accountSid}:${this.authToken}`).toString(

@@ -12,11 +12,22 @@ import { MessageViewAdapter } from './adapters/message-view.adapter';
 export class ConversationsService {
   constructor(private readonly repository: ConversationsRepository) {}
 
+  /**
+   * @about Lists all conversations as summaries for the admin UI, newest
+   * activity first.
+   * @returns The conversation summaries, adapted from the repository rows.
+   */
   async list(): Promise<ConversationSummary[]> {
     const rows = await this.repository.listWithStats();
     return rows.map((row) => ConversationSummaryAdapter.toModel(row));
   }
 
+  /**
+   * @about Fetches one conversation with its full message history as views.
+   * @param id - The UUID of the conversation to fetch.
+   * @returns The conversation detail with its messages in chronological order.
+   * @throws NotFoundException when no conversation exists for the id.
+   */
   async get(id: string): Promise<ConversationDetail> {
     const conversation = await this.repository.findById(id);
 

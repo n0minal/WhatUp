@@ -36,8 +36,8 @@ export class RabbitMqChangeBusService
   private handler: ChangeEventHandler | null = null;
   private subscribed = false;
 
-  constructor(config: ConfigService<AppConfig, true>) {
-    const rabbitmq = config.get('rabbitmq', { infer: true });
+  constructor(private readonly config: ConfigService<AppConfig, true>) {
+    const rabbitmq = this.config.get('rabbitmq', { infer: true });
     this.url = rabbitmq.url;
     this.exchange = rabbitmq.changesExchange;
   }
@@ -52,6 +52,13 @@ export class RabbitMqChangeBusService
     await this.connection?.close().catch(() => undefined);
   }
 
+  /**
+   * @about Broadcasts a "this conversation changed" hint to every subscriber.
+   * Best-effort by contract: never rejects — a hint dropped while the broker
+   * is down costs staleness until the next event, never correctness.
+   * @param conversationId - The conversation whose state just changed.
+   * @returns Promise<void>
+   */
   publish(conversationId: string): Promise<void> {
     try {
       if (!this.channel) throw new Error('change-bus connection not available');
@@ -62,6 +69,13 @@ export class RabbitMqChangeBusService
     return Promise.resolve();
   }
 
+  /**
+   * @about Registers the handler for change hints on this instance's own
+   * exclusive queue. At-most-once: hints published while this instance was
+   * down are not replayed. Attaches now or as soon as the connection lands.
+   * @param handler - Called with the conversation id of each hint.
+   * @returns void
+   */
   subscribe(handler: ChangeEventHandler): void {
     this.handler = handler;
     if (this.channel) void this.startConsumer();

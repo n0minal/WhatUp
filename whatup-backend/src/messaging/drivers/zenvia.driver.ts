@@ -13,13 +13,21 @@ export class ZenviaDriver implements MessagingClient {
   private readonly apiToken: string;
   private readonly fromNumber: string;
 
-  constructor(config: ConfigService<AppConfig, true>) {
-    const zenvia = config.get('zenvia', { infer: true });
+  constructor(private readonly config: ConfigService<AppConfig, true>) {
+    const zenvia = this.config.get('zenvia', { infer: true });
     this.apiBaseUrl = zenvia.apiBaseUrl;
     this.apiToken = zenvia.apiToken;
     this.fromNumber = zenvia.fromNumber;
   }
 
+  /**
+   * @about Sends an SMS through Zenvia's v2 SMS channel with token auth,
+   * mapping Zenvia's message id onto the neutral sid.
+   * @param to - The recipient phone number (E.164).
+   * @param body - The text of the message.
+   * @returns The provider message id of the accepted send.
+   * @throws Error with the HTTP status and response text when Zenvia rejects the send.
+   */
   async sendSms(to: string, body: string): Promise<SendSmsResult> {
     const response = await fetch(
       `${this.apiBaseUrl}/v2/channels/sms/messages`,
