@@ -33,7 +33,7 @@ export class RabbitMqChangeBusService
   private running = false;
   private connection: AmqpConnection | null = null;
   private channel: amqp.Channel | null = null;
-  private handler: ChangeEventHandler | null = null;
+  private readonly handlers: ChangeEventHandler[] = [];
   private subscribed = false;
 
   constructor(private readonly config: ConfigService<AppConfig, true>) {
@@ -70,14 +70,16 @@ export class RabbitMqChangeBusService
   }
 
   /**
-   * @about Registers the handler for change hints on this instance's own
-   * exclusive queue. At-most-once: hints published while this instance was
-   * down are not replayed. Attaches now or as soon as the connection lands.
+   * @about Registers a handler for change hints on this instance's own
+   * exclusive queue. Multiple subscribers share one consumer and each
+   * receives every hint (SSE fanout and cache invalidation both listen).
+   * At-most-once: hints published while this instance was down are not
+   * replayed. Attaches now or as soon as the connection lands.
    * @param handler - Called with the conversation id of each hint.
    * @returns void
    */
   subscribe(handler: ChangeEventHandler): void {
-    this.handler = handler;
+    this.handlers.push(handler);
     if (this.channel) void this.startConsumer();
   }
 
@@ -116,7 +118,7 @@ export class RabbitMqChangeBusService
     this.channel = channel;
     this.connection = connection;
     this.logger.log(`Connected; fanout exchange '${this.exchange}' asserted`);
-    if (this.handler) await this.startConsumer();
+    if (this.handlers.length > 0) await this.startConsumer();
   }
 
   private async startConsumer(): Promise<void> {
@@ -132,7 +134,9 @@ export class RabbitMqChangeBusService
     await this.channel.consume(
       queue,
       (msg) => {
-        if (msg) this.handler?.(msg.content.toString('utf8'));
+        if (!msg) return;
+        const conversationId = msg.content.toString('utf8');
+        for (const handler of this.handlers) handler(conversationId);
       },
       { noAck: true },
     );

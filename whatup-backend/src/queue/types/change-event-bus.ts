@@ -8,6 +8,9 @@ export type ChangeEventHandler = (conversationId: string) => void;
  * intentionally at-most-once: `publish` never rejects (a lost hint means
  * brief staleness, and it must never fail the message pipeline), and
  * subscribers receive nothing that was published while they were down.
+ *
+ * subscribe() may be called multiple times; every handler receives every
+ * hint (the SSE stream and cache invalidation both listen).
  */
 export interface ChangeEventBus {
   publish(conversationId: string): Promise<void>;

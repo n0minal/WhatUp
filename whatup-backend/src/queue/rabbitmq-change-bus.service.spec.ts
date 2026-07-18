@@ -112,4 +112,21 @@ describe('RabbitMqChangeBusService', () => {
 
     expect(handler).toHaveBeenCalledWith('conv-42');
   });
+
+  it('delivers every hint to every subscriber over one shared consumer', async () => {
+    const sse = jest.fn();
+    const invalidation = jest.fn();
+    service.subscribe(sse);
+    service.subscribe(invalidation);
+    await flush();
+
+    // One queue, one consumer; the fanout happens in-process.
+    expect(channel.assertQueue).toHaveBeenCalledTimes(1);
+    const consumeArgs = channel.consume.mock.calls[0] as unknown[];
+    const deliver = consumeArgs[1] as ConsumeCallback;
+    deliver({ content: Buffer.from('conv-7') });
+
+    expect(sse).toHaveBeenCalledWith('conv-7');
+    expect(invalidation).toHaveBeenCalledWith('conv-7');
+  });
 });
