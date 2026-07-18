@@ -65,19 +65,25 @@ carrier: there is a single ingestion path.
 ```mermaid
 flowchart LR
   UI[Admin UI] -- "send SMS" --> TW[twilio-mock]
-  TW -- "webhook" --> API[API]
+  UI -- "read conversations" --> API[API]
+  TW -- "webhook" --> API
   API -- "enqueue" --> MQ[(RabbitMQ)]
+  API -- "cache-aside" --> RD[(Redis)]
+  API -- "on cache miss" --> DB[(Postgres)]
   MQ --> WK[Worker]
-  WK -- "persist + reply" --> DB[(Postgres)]
+  WK -- "persist + reply" --> DB
   WK -- "send reply" --> TW
   WK -. "change hint" .-> API
+  API -. "evict cache" .-> RD
   API -. "SSE" .-> UI
 ```
 
 The webhook answers in milliseconds and enqueues; the worker claims each message
 atomically, generates the reply, sends it back through the carrier, and records
 everything in Postgres, which is the arbiter of idempotency, ordering, and truth.
-The full architecture, trade-offs, and failure walkthroughs live in
+Admin reads are served cache-aside from Redis, falling through to Postgres on a
+miss; the change hints that drive the SSE stream also evict the affected cache
+keys. The full architecture, trade-offs, and failure walkthroughs live in
 [DESIGN.md](DESIGN.md).
 
 ## Tech stack
