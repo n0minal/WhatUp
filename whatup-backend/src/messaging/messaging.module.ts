@@ -8,11 +8,6 @@ import { MessagingDriver } from './enumerators/messaging-driver';
 import { MessagingClient } from './types/messaging-client';
 import { MESSAGING_CLIENT } from './tokens';
 
-/**
- * Outbound messaging behind the MessagingClient port. The driver is chosen
- * by MESSAGING_DRIVER; adding a provider is one new driver class plus a case
- * here — nothing outside this module changes.
- */
 @Module({
   providers: [
     TwilioDriver,
@@ -39,7 +34,6 @@ import { MESSAGING_CLIENT } from './tokens';
       },
     },
   ],
-  // Only the port is exported: consumers can't couple to a driver.
   exports: [MESSAGING_CLIENT],
 })
 export class MessagingModule {}
