@@ -1,3 +1,7 @@
+// Load .env before reading process.env: this module runs before Nest (and
+// its ConfigModule dotenv pass) exists, so it must load the file itself —
+// otherwise OTEL_* set in .env (vs the shell) would be invisible here.
+import 'dotenv/config';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
