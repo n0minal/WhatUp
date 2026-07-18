@@ -1,7 +1,3 @@
-/** Pipeline state machine: Received -> Processing -> Sent | Failed */
-export enum MessageStatus {
-  Received = 'received',
-  Processing = 'processing',
-  Sent = 'sent',
-  Failed = 'failed',
-}
+// Shared with whatup-admin via the wire contract; re-exported so domain
+// imports stay local (../enumerators/message-status).
+export { MessageStatus } from 'whatup-contracts';

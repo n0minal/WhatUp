@@ -21,12 +21,13 @@ export class ChangeStreamService implements OnModuleInit {
   private readonly changes$ = new Subject<string>();
 
   constructor(
-    @Inject(CHANGE_EVENT_BUS) private readonly changes: ChangeEventBus,
-    config: ConfigService<AppConfig, true>,
+    @Inject(CHANGE_EVENT_BUS)
+    private readonly changes: ChangeEventBus,
+    private readonly config: ConfigService<AppConfig, true>,
   ) {
-    const mode = config.get('mode', { infer: true });
+    const mode = this.config.get('mode', { infer: true });
     // SSE is served by the HTTP API only; a pure worker has no subscribers.
-    this.enabled = mode === AppMode.Api || mode === AppMode.All;
+    this.enabled = [AppMode.Api, AppMode.All].includes(mode);
   }
 
   onModuleInit(): void {

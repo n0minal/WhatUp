@@ -1,26 +1,12 @@
-/** Response shapes are the whatup-admin contract (whatup-admin/src/types.ts). */
-
-export interface ConversationSummary {
-  id: string;
-  phoneNumber: string;
-  lastMessagePreview: string;
-  lastMessageAt: string;
-  messageCount: number;
-}
-
-export interface MessageView {
-  id: string;
-  conversationId: string;
-  direction: string;
-  body: string;
-  status: string;
-  createdAt: string;
-}
-
-export interface ConversationDetail {
-  conversation: ConversationSummary;
-  messages: MessageView[];
-}
+/**
+ * Response shapes come from the shared wire contract (whatup-contracts) —
+ * the same definitions whatup-admin consumes, so drift is a compile error.
+ */
+export type {
+  ConversationDetail,
+  ConversationSummary,
+  MessageView,
+} from 'whatup-contracts';
 
 /** Raw row shape returned by ConversationsRepository.listWithStats(). */
 export interface ConversationListRow {
