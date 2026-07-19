@@ -37,7 +37,10 @@ status while the reply is generated, and the reply arriving live over SSE.
 
 ![Admin UI showing a conversation with generated replies](docs/media/admin-conversation.png)
 
-Video: [docs/media/whatup-admin.mp4](docs/media/whatup-admin.mp4)
+
+https://github.com/user-attachments/assets/19981223-23c7-4d1b-83ed-7bb1bff5569c
+
+
 
 ### The observability dashboard
 
@@ -49,8 +52,6 @@ pipeline latency, queue depths, recent traces, and trace-correlated logs.
 ![Grafana WhatUp Overview dashboard with live metrics](docs/media/grafana-overview.png)
 
 ![Recent traces and trace-correlated logs in Grafana](docs/media/grafana-traces-logs.png)
-
-Video: [docs/media/whatup-grafana.mp4](docs/media/whatup-grafana.mp4)
 
 ## Features
 
