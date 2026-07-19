@@ -49,10 +49,12 @@ be demonstrated, not just claimed:
 | `SERVICE_NUMBER` | `+15550000001` | The WhatUp phone number |
 | `PORT` | `4010` | Listen port |
 
-Try the duplicate defence end-to-end:
+Configuration is read from a `.env` file in this directory (or from the
+process environment). `cp .env.example .env` enables always-duplicate mode:
+every simulated inbound hits the backend twice, and the conversation should
+still show exactly one reply.
 
 ```bash
-WEBHOOK_DUPLICATE_PROB=1 npm run dev
-# every simulated inbound now hits the backend twice;
-# the conversation should still show exactly one reply.
+cp .env.example .env
+npm run dev
 ```
