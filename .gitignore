@@ -20,5 +20,5 @@ coverage/
 # claude
 .claude
 
-# demo videos stay local; upload to GitHub through the web editor
-docs/media/*.mp4
+# demo media stays local; upload to GitHub through the web editor
+docs/media/
