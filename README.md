@@ -26,12 +26,15 @@ live, like a helicopter parent with a dashboard.
 A conversation started from the admin composer: the inbound message, the processing
 status while the reply is generated, and the reply arriving live over SSE.
 
-https://github.com/user-attachments/assets/19981223-23c7-4d1b-83ed-7bb1bff5569c
+https://github.com/user-attachments/assets/30f8f97a-fd38-48f5-a9d8-addb10b8ead2
 
 ### The observability dashboard
 
 The provisioned WhatUp Overview dashboard: message throughput and outcomes, reply and
 pipeline latency, queue depths, recent traces, and trace-correlated logs.
+
+<img width="1280" height="720" alt="grafana-overview" src="https://github.com/user-attachments/assets/8bf375ec-2e26-4858-9749-0b98d05023e9" />
+<img width="1280" height="720" alt="grafana-traces-logs" src="https://github.com/user-attachments/assets/e8ea6420-8c94-435c-95b5-51f19129dd3f" />
 
 ## Features
 
