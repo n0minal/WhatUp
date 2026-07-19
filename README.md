@@ -22,10 +22,11 @@ live, like a helicopter parent with a dashboard.
 ## Demo
 
 <!-- ────────────────────────────────────────────────────────────────────────
-  Inline video playback on GitHub requires uploading through the web editor:
-  open this file on github.com, click the pencil, and drag each .mp4 from
-  docs/media/ onto the line below its heading. GitHub replaces it with a
-  hosted user-attachments URL that renders as a player.
+  The walkthrough video lives locally in docs/media/ (gitignored). Inline
+  playback on GitHub requires uploading through the web editor: open this
+  file on github.com, click the pencil, and drag the .mp4 below "The
+  application" heading; GitHub replaces it with a hosted user-attachments
+  URL that renders as a player.
 ──────────────────────────────────────────────────────────────────────── -->
 
 ### The application
@@ -43,8 +44,6 @@ https://github.com/user-attachments/assets/19981223-23c7-4d1b-83ed-7bb1bff5569c
 
 
 ### The observability dashboard
-
-<!-- Drop docs/media/whatup-grafana.mp4 here for inline playback. -->
 
 The provisioned WhatUp Overview dashboard: message throughput and outcomes, reply and
 pipeline latency, queue depths, recent traces, and trace-correlated logs.
