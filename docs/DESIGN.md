@@ -19,24 +19,18 @@ message (3–15 s), and replies by SMS. Admins inspect conversations in a web UI
 
 ```mermaid
 flowchart LR
-    subgraph "Twilio (dev: twilio-mock)"
-        T[Twilio SMS]
-    end
-    subgraph "whatup-backend (one codebase, two run modes)"
-        API["API mode<br/>webhook + admin REST"]
-        W["Worker mode<br/>RabbitMQ consumer"]
-    end
-    Q[(RabbitMQ<br/>+ retry queue + DLQ)]
-    PG[(PostgreSQL)]
-    A["whatup-admin<br/>(React)"]
-
-    T -- "POST /webhooks/twilio/sms" --> API
-    API -- "enqueue raw payload" --> Q
-    Q -- "push (prefetch-bounded)" --> W
-    W -- "persist + status updates" --> PG
-    W -- "send reply (Messages API)" --> T
-    A -- "GET /conversations[/:id]" --> API
-    API -- read --> PG
+  UI[Admin UI] -- "send SMS" --> TW[twilio-mock]
+  UI -- "read conversations" --> API[API]
+  TW -- "webhook" --> API
+  API -- "enqueue" --> MQ[(RabbitMQ)]
+  API -- "cache-aside" --> RD[(Redis)]
+  API -- "on cache miss" --> DB[(Postgres)]
+  MQ --> WK[Worker]
+  WK -- "persist + reply" --> DB
+  WK -- "send reply" --> TW
+  WK -. "change hint" .-> API
+  API -. "evict cache" .-> RD
+  API -. "SSE" .-> UI
 ```
 
 One NestJS codebase runs in two modes selected by env (`APP_MODE=api|worker`),
@@ -183,16 +177,16 @@ in the data model.
 ```
 conversations                          messages
 ─────────────                          ────────
-id            uuid PK                  id              uuid PK
-phone_number  text UNIQUE              conversation_id uuid FK → conversations
+id            uuid PK                  id                  uuid PK
+phone_number  text UNIQUE              conversation_id     uuid FK → conversations
 created_at    timestamptz              provider_message_id text UNIQUE NULL ← idempotency (inbound)
-last_message_at timestamptz            direction       'inbound' | 'outbound'
-                                       body            text
-                                       status          'received' | 'processing' | 'sent' | 'failed'
-                                       in_reply_to     uuid UNIQUE NULL FK → messages  ← one reply per inbound
-                                       claimed_at      timestamptz NULL   ← stale-claim takeover
-                                       created_at      timestamptz
-                                       processed_at    timestamptz NULL
+last_message_at timestamptz            direction           'inbound' | 'outbound'
+                                       body                text
+                                       status              'received' | 'processing' | 'sent' | 'failed'
+                                       in_reply_to         uuid UNIQUE NULL FK → messages  ← one reply per inbound
+                                       claimed_at          timestamptz NULL   ← stale-claim takeover
+                                       created_at          timestamptz
+                                       processed_at        timestamptz NULL
 ```
 
 - A **conversation** is identified by the remote phone number (unique). The
@@ -296,7 +290,7 @@ demand, so the idempotency defences can be demonstrated rather than claimed.
 | Decision | Alternative | Why, and what it cost |
 |---|---|---|
 | RabbitMQ | SQS | The broker runs identically in dev and production (no LocalStack emulation), publishes are broker-confirmed before the webhook acks, and unacked deliveries requeue instantly on worker death instead of waiting out a visibility timeout. Cost: retry delay and DLQ are app-asserted topology (TTL'd retry queue + parking queue) rather than managed configuration, and the broker is ours to operate. At-least-once still forces idempotency — which Twilio's duplicate deliveries force anyway. |
-| RabbitMQ | pg-boss (queue in Postgres) | pg-boss elegantly deletes the dual-write, and DB death doesn't lose committed jobs. Rejected for *failure-domain coupling*: queue-in-DB welds ingestion availability to Postgres uptime, and queue churn (insert/lock/update/delete per job) is hostile to the OLTP tables sharing the buffer cache. Not rejected for durability — that argument would be wrong. |
+| RabbitMQ | pg-boss (queue in Postgres) | Rejected for *failure-domain coupling*: queue-in-DB welds ingestion availability to Postgres uptime, and queue churn (insert/lock/update/delete per job) is hostile to the OLTP tables sharing the buffer cache|
 | Enqueue-first webhook | Persist-first + queue as doorbell | Keeps Postgres off the ack path; ingestion survives DB outages; no dual-write, no reconciliation sweeper. Cost: seconds of admin-visibility latency. |
 | Nest monolith, two run modes | Lambda workers | One deployment model, shared DI/entities, trivial local dev. Cost: we manage worker concurrency ourselves. |
 | Fixed retry delay + DB claim | Per-message delay tuning | The claim kills double-processing at the source of truth; a single TTL'd retry queue keeps the topology to three queues with no per-job machinery. |
